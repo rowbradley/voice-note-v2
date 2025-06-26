@@ -1,0 +1,166 @@
+#!/bin/bash
+
+# Deploy Bootstrap Endpoint Script
+# This script will create and deploy the bootstrap endpoint to your Vercel project
+
+echo "🚀 Voice Note Bootstrap Endpoint Deployment"
+echo "=========================================="
+
+# Check if Vercel CLI is installed
+if ! command -v vercel &> /dev/null; then
+    echo "❌ Vercel CLI not found. Installing..."
+    npm install -g vercel
+fi
+
+# Create a temporary directory for deployment
+TEMP_DIR=$(mktemp -d)
+echo "📁 Creating temporary deployment directory: $TEMP_DIR"
+
+# Copy files to temp directory
+cd "$TEMP_DIR"
+mkdir -p api/auth
+
+# Create the bootstrap endpoint
+cat > api/auth/bootstrap.js << 'EOF'
+const jwt = require('jsonwebtoken');
+
+module.exports = async (req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { deviceId, platform, appVersion, systemVersion } = req.body;
+
+    // Validate required fields
+    if (!deviceId || !platform) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        required: ['deviceId', 'platform']
+      });
+    }
+
+    // Log for debugging (remove in production)
+    console.log('Bootstrap token requested:', {
+      deviceId,
+      platform,
+      appVersion,
+      systemVersion,
+      timestamp: new Date().toISOString()
+    });
+
+    // Create JWT payload
+    const payload = {
+      deviceId,
+      platform,
+      appVersion: appVersion || '1.0',
+      systemVersion: systemVersion || 'unknown',
+      scope: ['templates.read', 'templates.process'],
+      type: 'bootstrap',
+      iat: Math.floor(Date.now() / 1000)
+    };
+
+    // Sign token - expires in 1 hour
+    const token = jwt.sign(
+      payload,
+      process.env.JWT_SECRET || 'dev-secret-change-me',
+      {
+        expiresIn: '1h',
+        issuer: 'voicenote-api',
+        audience: 'voicenote-app'
+      }
+    );
+
+    // Return token
+    res.status(200).json({
+      token,
+      expiresIn: 3600, // 1 hour in seconds
+      refreshToken: null, // No refresh for bootstrap tokens
+      scope: ['templates.read', 'templates.process']
+    });
+
+  } catch (error) {
+    console.error('Bootstrap error:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate bootstrap token',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+EOF
+
+# Create package.json for dependencies
+cat > package.json << 'EOF'
+{
+  "name": "voicenote-bootstrap-endpoint",
+  "version": "1.0.0",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0"
+  }
+}
+EOF
+
+# Create vercel.json
+cat > vercel.json << 'EOF'
+{
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 30
+    }
+  }
+}
+EOF
+
+echo ""
+echo "📋 Files created:"
+echo "  - api/auth/bootstrap.js"
+echo "  - package.json"
+echo "  - vercel.json"
+echo ""
+
+# Link to existing project
+echo "🔗 Linking to your existing Vercel project..."
+echo ""
+echo "When prompted:"
+echo "1. Choose 'Link to existing project'"
+echo "2. Select 'voicenote-backend-api'"
+echo ""
+
+vercel link
+
+# Deploy
+echo ""
+echo "🚀 Deploying to production..."
+vercel --prod
+
+echo ""
+echo "✅ Deployment complete!"
+echo ""
+echo "⚠️  IMPORTANT: Set the JWT_SECRET environment variable"
+echo ""
+echo "Run this command to set it:"
+echo "vercel env add JWT_SECRET production"
+echo ""
+echo "Or go to: https://vercel.com/row-dlais-projects/voicenote-backend-api/settings/environment-variables"
+echo ""
+echo "🧪 Test your endpoint:"
+echo "curl -X POST https://voicenote-backend-api.vercel.app/api/auth/bootstrap \\"
+echo "  -H \"Content-Type: application/json\" \\"
+echo "  -d '{\"deviceId\": \"test\", \"platform\": \"iOS\"}'"
+
+# Clean up
+cd /
+rm -rf "$TEMP_DIR"
