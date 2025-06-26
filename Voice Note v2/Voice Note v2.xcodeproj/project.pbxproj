@@ -1,0 +1,848 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0D8B95D3A1C7A01C6B79E126 /* CloudModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7E4B6B8039DBF2DB5F2C2C7 /* CloudModeTests.swift */; };
+		603E5B2D2E05E64A0066FA8B /* ExpandedContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603E5B2B2E05E64A0066FA8B /* ExpandedContentView.swift */; };
+		603E5B332E05F91F0066FA8B /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 603E5B322E05F91F0066FA8B /* MarkdownUI */; };
+		603E5B362E05F9530066FA8B /* EnhancedMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603E5B342E05F9530066FA8B /* EnhancedMarkdownView.swift */; };
+		60A704DC2E0254360078652F /* RecordingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CC2E0254360078652F /* RecordingDetailView.swift */; };
+		60A704DD2E0254360078652F /* AudioLevelVisualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C82E0254360078652F /* AudioLevelVisualizer.swift */; };
+		60A704DE2E0254360078652F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CE2E0254360078652F /* SettingsView.swift */; };
+		60A704DF2E0254360078652F /* RecordingTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CD2E0254360078652F /* RecordingTimer.swift */; };
+		60A704E02E0254360078652F /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C22E0254360078652F /* TranscriptionService.swift */; };
+		60A704E12E0254360078652F /* CloudAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BB2E0254360078652F /* CloudAIService.swift */; };
+		60A704E22E0254360078652F /* JWTManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BC2E0254360078652F /* JWTManager.swift */; };
+		60A704E32E0254360078652F /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704A52E0254360078652F /* Config.swift */; };
+		60A704E42E0254360078652F /* Template.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B32E0254360078652F /* Template.swift */; };
+		60A704E52E0254360078652F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704A62E0254360078652F /* ContentView.swift */; };
+		60A704E72E0254360078652F /* TemplatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CF2E0254360078652F /* TemplatePickerView.swift */; };
+		60A704E82E0254360078652F /* AudioPlaybackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B92E0254360078652F /* AudioPlaybackManager.swift */; };
+		60A704E92E0254360078652F /* TemplateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C12E0254360078652F /* TemplateManager.swift */; };
+		60A704EA2E0254360078652F /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C92E0254360078652F /* LibraryView.swift */; };
+		60A704EC2E0254360078652F /* Voice_Note_v2App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704D22E0254360078652F /* Voice_Note_v2App.swift */; };
+		60A704ED2E0254360078652F /* RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CB2E0254360078652F /* RecordButton.swift */; };
+		60A704EE2E0254360078652F /* NetworkMonitorProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BF2E0254360078652F /* NetworkMonitorProtocol.swift */; };
+		60A704EF2E0254360078652F /* RecentRecordingCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CA2E0254360078652F /* RecentRecordingCard.swift */; };
+		60A704F12E0254360078652F /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C42E0254360078652F /* AppCoordinator.swift */; };
+		60A704F22E0254360078652F /* MockAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BD2E0254360078652F /* MockAIService.swift */; };
+		60A704F32E0254360078652F /* AIServiceFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B82E0254360078652F /* AIServiceFactory.swift */; };
+		60A704F42E0254360078652F /* RecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C02E0254360078652F /* RecordingManager.swift */; };
+		60A704F52E0254360078652F /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C52E0254360078652F /* ShareSheet.swift */; };
+		60A704F62E0254360078652F /* NetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BE2E0254360078652F /* NetworkManager.swift */; };
+		60A704F82E0254360078652F /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B72E0254360078652F /* AIService.swift */; };
+		60A704FB2E0254360078652F /* Recording.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B22E0254360078652F /* Recording.swift */; };
+		60A704FD2E0254360078652F /* AudioRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BA2E0254360078652F /* AudioRecordingService.swift */; };
+		60A704FE2E0254360078652F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 60A704D12E0254360078652F /* Assets.xcassets */; };
+		60A704FF2E0254360078652F /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 60A704A42E0254360078652F /* Config.plist */; };
+		60A705072E026C4E0078652F /* CompactAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A705022E026C4E0078652F /* CompactAudioPlayer.swift */; };
+		60A705082E026C4E0078652F /* NoteCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A705042E026C4E0078652F /* NoteCardView.swift */; };
+		6B8AB69BD476388AAEF6F445 /* CloudModeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE72EF03C78DEC1272FF075 /* CloudModeUITests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		60A7047E2E0250F20078652F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 60A704682E0250F00078652F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 60A7046F2E0250F00078652F;
+			remoteInfo = "Voice Note v2";
+		};
+		60A704882E0250F20078652F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 60A704682E0250F00078652F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 60A7046F2E0250F00078652F;
+			remoteInfo = "Voice Note v2";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		603E5AF12E03CCBE0066FA8B /* SpeechTranscribing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechTranscribing.swift; sourceTree = "<group>"; };
+		603E5AF42E03CCBE0066FA8B /* TranscriptionSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSettings.swift; sourceTree = "<group>"; };
+		603E5B2B2E05E64A0066FA8B /* ExpandedContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedContentView.swift; sourceTree = "<group>"; };
+		603E5B342E05F9530066FA8B /* EnhancedMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedMarkdownView.swift; sourceTree = "<group>"; };
+		60A704702E0250F00078652F /* Voice Note v2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Voice Note v2.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		60A7047D2E0250F20078652F /* Voice Note v2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Voice Note v2Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		60A704872E0250F20078652F /* Voice Note v2UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Voice Note v2UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		60A704A42E0254360078652F /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config.plist; sourceTree = "<group>"; };
+		60A704A52E0254360078652F /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		60A704A62E0254360078652F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		60A704B22E0254360078652F /* Recording.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recording.swift; sourceTree = "<group>"; };
+		60A704B32E0254360078652F /* Template.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Template.swift; sourceTree = "<group>"; };
+		60A704B72E0254360078652F /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
+		60A704B82E0254360078652F /* AIServiceFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceFactory.swift; sourceTree = "<group>"; };
+		60A704B92E0254360078652F /* AudioPlaybackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackManager.swift; sourceTree = "<group>"; };
+		60A704BA2E0254360078652F /* AudioRecordingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingService.swift; sourceTree = "<group>"; };
+		60A704BB2E0254360078652F /* CloudAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudAIService.swift; sourceTree = "<group>"; };
+		60A704BC2E0254360078652F /* JWTManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JWTManager.swift; sourceTree = "<group>"; };
+		60A704BD2E0254360078652F /* MockAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAIService.swift; sourceTree = "<group>"; };
+		60A704BE2E0254360078652F /* NetworkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkManager.swift; sourceTree = "<group>"; };
+		60A704BF2E0254360078652F /* NetworkMonitorProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitorProtocol.swift; sourceTree = "<group>"; };
+		60A704C02E0254360078652F /* RecordingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingManager.swift; sourceTree = "<group>"; };
+		60A704C12E0254360078652F /* TemplateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateManager.swift; sourceTree = "<group>"; };
+		60A704C22E0254360078652F /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
+		60A704C42E0254360078652F /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
+		60A704C52E0254360078652F /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
+		60A704C82E0254360078652F /* AudioLevelVisualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioLevelVisualizer.swift; sourceTree = "<group>"; };
+		60A704C92E0254360078652F /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		60A704CA2E0254360078652F /* RecentRecordingCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentRecordingCard.swift; sourceTree = "<group>"; };
+		60A704CB2E0254360078652F /* RecordButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordButton.swift; sourceTree = "<group>"; };
+		60A704CC2E0254360078652F /* RecordingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingDetailView.swift; sourceTree = "<group>"; };
+		60A704CD2E0254360078652F /* RecordingTimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingTimer.swift; sourceTree = "<group>"; };
+		60A704CE2E0254360078652F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		60A704CF2E0254360078652F /* TemplatePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatePickerView.swift; sourceTree = "<group>"; };
+		60A704D12E0254360078652F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		60A704D22E0254360078652F /* Voice_Note_v2App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Voice_Note_v2App.swift; sourceTree = "<group>"; };
+		60A705022E026C4E0078652F /* CompactAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactAudioPlayer.swift; sourceTree = "<group>"; };
+		60A705042E026C4E0078652F /* NoteCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCardView.swift; sourceTree = "<group>"; };
+		B7E4B6B8039DBF2DB5F2C2C7 /* CloudModeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CloudModeTests.swift; path = "../Voice Note v2Tests/CloudModeTests.swift"; sourceTree = "<group>"; };
+		ECE72EF03C78DEC1272FF075 /* CloudModeUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CloudModeUITests.swift; path = "../Voice Note v2UITests/CloudModeUITests.swift"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		60A704722E0250F00078652F /* Voice Note v2 */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Voice Note v2";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		60A7046D2E0250F00078652F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				603E5B332E05F91F0066FA8B /* MarkdownUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60A7047A2E0250F20078652F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60A704842E0250F20078652F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		32754B80D0A7AFBFD15AE6AD /* Voice Note v2Tests */ = {
+			isa = PBXGroup;
+			children = (
+				B7E4B6B8039DBF2DB5F2C2C7 /* CloudModeTests.swift */,
+			);
+			name = "Voice Note v2Tests";
+			sourceTree = "<group>";
+		};
+		60A704672E0250F00078652F = {
+			isa = PBXGroup;
+			children = (
+				60A704A42E0254360078652F /* Config.plist */,
+				60A704A52E0254360078652F /* Config.swift */,
+				60A704A62E0254360078652F /* ContentView.swift */,
+				60A704AB2E0254360078652F /* Data */,
+				60A704B12E0254360078652F /* Domain */,
+				60A704B42E0254360078652F /* Models */,
+				60A704C32E0254360078652F /* Services */,
+				60A704C62E0254360078652F /* Utilities */,
+				60A704C72E0254360078652F /* ViewModels */,
+				60A704D02E0254360078652F /* Views */,
+				60A704D32E0254360078652F /* Voice Note v2 */,
+				60A704722E0250F00078652F /* Voice Note v2 */,
+				60A704712E0250F00078652F /* Products */,
+				32754B80D0A7AFBFD15AE6AD /* Voice Note v2Tests */,
+				89C3CDC63FBE68CFB0977E63 /* Voice Note v2UITests */,
+			);
+			sourceTree = "<group>";
+		};
+		60A704712E0250F00078652F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				60A704702E0250F00078652F /* Voice Note v2.app */,
+				60A7047D2E0250F20078652F /* Voice Note v2Tests.xctest */,
+				60A704872E0250F20078652F /* Voice Note v2UITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		60A704A72E0254360078652F /* Cache */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Cache;
+			sourceTree = "<group>";
+		};
+		60A704A92E0254360078652F /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		60A704AA2E0254360078652F /* Repositories */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Repositories;
+			sourceTree = "<group>";
+		};
+		60A704AB2E0254360078652F /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				60A704A72E0254360078652F /* Cache */,
+				60A704A92E0254360078652F /* Persistence */,
+				60A704AA2E0254360078652F /* Repositories */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		60A704AF2E0254360078652F /* Repositories */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Repositories;
+			sourceTree = "<group>";
+		};
+		60A704B02E0254360078652F /* UseCases */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = UseCases;
+			sourceTree = "<group>";
+		};
+		60A704B12E0254360078652F /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				60A704AF2E0254360078652F /* Repositories */,
+				60A704B02E0254360078652F /* UseCases */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		60A704B42E0254360078652F /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				60A704B22E0254360078652F /* Recording.swift */,
+				60A704B32E0254360078652F /* Template.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		60A704C32E0254360078652F /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				603E5AF12E03CCBE0066FA8B /* SpeechTranscribing.swift */,
+				603E5AF42E03CCBE0066FA8B /* TranscriptionSettings.swift */,
+				60A704B72E0254360078652F /* AIService.swift */,
+				60A704B82E0254360078652F /* AIServiceFactory.swift */,
+				60A704B92E0254360078652F /* AudioPlaybackManager.swift */,
+				60A704BA2E0254360078652F /* AudioRecordingService.swift */,
+				60A704BB2E0254360078652F /* CloudAIService.swift */,
+				60A704BC2E0254360078652F /* JWTManager.swift */,
+				60A704BD2E0254360078652F /* MockAIService.swift */,
+				60A704BE2E0254360078652F /* NetworkManager.swift */,
+				60A704BF2E0254360078652F /* NetworkMonitorProtocol.swift */,
+				60A704C02E0254360078652F /* RecordingManager.swift */,
+				60A704C12E0254360078652F /* TemplateManager.swift */,
+				60A704C22E0254360078652F /* TranscriptionService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		60A704C62E0254360078652F /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				60A704C42E0254360078652F /* AppCoordinator.swift */,
+				60A704C52E0254360078652F /* ShareSheet.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		60A704C72E0254360078652F /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		60A704D02E0254360078652F /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				60A705052E026C4E0078652F /* Components */,
+				60A704C82E0254360078652F /* AudioLevelVisualizer.swift */,
+				60A704C92E0254360078652F /* LibraryView.swift */,
+				60A704CA2E0254360078652F /* RecentRecordingCard.swift */,
+				60A704CB2E0254360078652F /* RecordButton.swift */,
+				60A704CC2E0254360078652F /* RecordingDetailView.swift */,
+				60A704CD2E0254360078652F /* RecordingTimer.swift */,
+				60A704CE2E0254360078652F /* SettingsView.swift */,
+				60A704CF2E0254360078652F /* TemplatePickerView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		60A704D32E0254360078652F /* Voice Note v2 */ = {
+			isa = PBXGroup;
+			children = (
+				60A704D12E0254360078652F /* Assets.xcassets */,
+				60A704D22E0254360078652F /* Voice_Note_v2App.swift */,
+			);
+			path = "Voice Note v2";
+			sourceTree = "<group>";
+		};
+		60A705052E026C4E0078652F /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				603E5B342E05F9530066FA8B /* EnhancedMarkdownView.swift */,
+				603E5B2B2E05E64A0066FA8B /* ExpandedContentView.swift */,
+				60A705022E026C4E0078652F /* CompactAudioPlayer.swift */,
+				60A705042E026C4E0078652F /* NoteCardView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		89C3CDC63FBE68CFB0977E63 /* Voice Note v2UITests */ = {
+			isa = PBXGroup;
+			children = (
+				ECE72EF03C78DEC1272FF075 /* CloudModeUITests.swift */,
+			);
+			name = "Voice Note v2UITests";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		60A7046F2E0250F00078652F /* Voice Note v2 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 60A704912E0250F20078652F /* Build configuration list for PBXNativeTarget "Voice Note v2" */;
+			buildPhases = (
+				60A7046C2E0250F00078652F /* Sources */,
+				60A7046D2E0250F00078652F /* Frameworks */,
+				60A7046E2E0250F00078652F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				60A704722E0250F00078652F /* Voice Note v2 */,
+			);
+			name = "Voice Note v2";
+			productName = "Voice Note v2";
+			productReference = 60A704702E0250F00078652F /* Voice Note v2.app */;
+			productType = "com.apple.product-type.application";
+		};
+		60A7047C2E0250F20078652F /* Voice Note v2Tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 60A704942E0250F20078652F /* Build configuration list for PBXNativeTarget "Voice Note v2Tests" */;
+			buildPhases = (
+				60A704792E0250F20078652F /* Sources */,
+				60A7047A2E0250F20078652F /* Frameworks */,
+				60A7047B2E0250F20078652F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				60A7047F2E0250F20078652F /* PBXTargetDependency */,
+			);
+			name = "Voice Note v2Tests";
+			productName = "Voice Note v2Tests";
+			productReference = 60A7047D2E0250F20078652F /* Voice Note v2Tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		60A704862E0250F20078652F /* Voice Note v2UITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 60A704972E0250F20078652F /* Build configuration list for PBXNativeTarget "Voice Note v2UITests" */;
+			buildPhases = (
+				60A704832E0250F20078652F /* Sources */,
+				60A704842E0250F20078652F /* Frameworks */,
+				60A704852E0250F20078652F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				60A704892E0250F20078652F /* PBXTargetDependency */,
+			);
+			name = "Voice Note v2UITests";
+			productName = "Voice Note v2UITests";
+			productReference = 60A704872E0250F20078652F /* Voice Note v2UITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		60A704682E0250F00078652F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					60A7046F2E0250F00078652F = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					60A7047C2E0250F20078652F = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 60A7046F2E0250F00078652F;
+					};
+					60A704862E0250F20078652F = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 60A7046F2E0250F00078652F;
+					};
+				};
+			};
+			buildConfigurationList = 60A7046B2E0250F00078652F /* Build configuration list for PBXProject "Voice Note v2" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 60A704672E0250F00078652F;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				603E5B312E05F91F0066FA8B /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 60A704712E0250F00078652F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				60A7046F2E0250F00078652F /* Voice Note v2 */,
+				60A7047C2E0250F20078652F /* Voice Note v2Tests */,
+				60A704862E0250F20078652F /* Voice Note v2UITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		60A7046E2E0250F00078652F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				60A704FE2E0254360078652F /* Assets.xcassets in Resources */,
+				60A704FF2E0254360078652F /* Config.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60A7047B2E0250F20078652F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60A704852E0250F20078652F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		60A7046C2E0250F00078652F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				60A704DC2E0254360078652F /* RecordingDetailView.swift in Sources */,
+				603E5B362E05F9530066FA8B /* EnhancedMarkdownView.swift in Sources */,
+				60A704DD2E0254360078652F /* AudioLevelVisualizer.swift in Sources */,
+				60A704DE2E0254360078652F /* SettingsView.swift in Sources */,
+				60A704DF2E0254360078652F /* RecordingTimer.swift in Sources */,
+				60A704E02E0254360078652F /* TranscriptionService.swift in Sources */,
+				60A704E12E0254360078652F /* CloudAIService.swift in Sources */,
+				60A704E22E0254360078652F /* JWTManager.swift in Sources */,
+				60A704E32E0254360078652F /* Config.swift in Sources */,
+				60A704E42E0254360078652F /* Template.swift in Sources */,
+				60A704E52E0254360078652F /* ContentView.swift in Sources */,
+				60A704E72E0254360078652F /* TemplatePickerView.swift in Sources */,
+				60A705072E026C4E0078652F /* CompactAudioPlayer.swift in Sources */,
+				60A705082E026C4E0078652F /* NoteCardView.swift in Sources */,
+				60A704E82E0254360078652F /* AudioPlaybackManager.swift in Sources */,
+				60A704E92E0254360078652F /* TemplateManager.swift in Sources */,
+				603E5B2D2E05E64A0066FA8B /* ExpandedContentView.swift in Sources */,
+				60A704EA2E0254360078652F /* LibraryView.swift in Sources */,
+				60A704EC2E0254360078652F /* Voice_Note_v2App.swift in Sources */,
+				60A704ED2E0254360078652F /* RecordButton.swift in Sources */,
+				60A704EE2E0254360078652F /* NetworkMonitorProtocol.swift in Sources */,
+				60A704EF2E0254360078652F /* RecentRecordingCard.swift in Sources */,
+				60A704F12E0254360078652F /* AppCoordinator.swift in Sources */,
+				60A704F22E0254360078652F /* MockAIService.swift in Sources */,
+				60A704F32E0254360078652F /* AIServiceFactory.swift in Sources */,
+				60A704F42E0254360078652F /* RecordingManager.swift in Sources */,
+				60A704F52E0254360078652F /* ShareSheet.swift in Sources */,
+				60A704F62E0254360078652F /* NetworkManager.swift in Sources */,
+				60A704F82E0254360078652F /* AIService.swift in Sources */,
+				60A704FB2E0254360078652F /* Recording.swift in Sources */,
+				60A704FD2E0254360078652F /* AudioRecordingService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60A704792E0250F20078652F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D8B95D3A1C7A01C6B79E126 /* CloudModeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		60A704832E0250F20078652F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6B8AB69BD476388AAEF6F445 /* CloudModeUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		60A7047F2E0250F20078652F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 60A7046F2E0250F00078652F /* Voice Note v2 */;
+			targetProxy = 60A7047E2E0250F20078652F /* PBXContainerItemProxy */;
+		};
+		60A704892E0250F20078652F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 60A7046F2E0250F00078652F /* Voice Note v2 */;
+			targetProxy = 60A704882E0250F20078652F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		60A7048F2E0250F20078652F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		60A704902E0250F20078652F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		60A704922E0250F20078652F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Voice Note needs microphone access to record your voice notes and memos so you can capture thoughts, ideas, and meeting notes hands-free.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Voice Note uses speech recognition to convert your voice recordings into text transcripts. All speech processing happens entirely on your device. Your transcribed text may be sent to our AI service for formatting and organization, but your original audio recordings never leave your device.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-Note-v2";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		60A704932E0250F20078652F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Voice Note needs microphone access to record your voice notes and memos so you can capture thoughts, ideas, and meeting notes hands-free.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Voice Note uses speech recognition to convert your voice recordings into text transcripts. All speech processing happens entirely on your device. Your transcribed text may be sent to our AI service for formatting and organization, but your original audio recordings never leave your device.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-Note-v2";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		60A704952E0250F20078652F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-Note-v2Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Voice Note v2.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Voice Note v2";
+			};
+			name = Debug;
+		};
+		60A704962E0250F20078652F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-Note-v2Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Voice Note v2.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Voice Note v2";
+			};
+			name = Release;
+		};
+		60A704982E0250F20078652F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-Note-v2UITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = "Voice Note v2";
+			};
+			name = Debug;
+		};
+		60A704992E0250F20078652F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-Note-v2UITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = "Voice Note v2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		60A7046B2E0250F00078652F /* Build configuration list for PBXProject "Voice Note v2" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60A7048F2E0250F20078652F /* Debug */,
+				60A704902E0250F20078652F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		60A704912E0250F20078652F /* Build configuration list for PBXNativeTarget "Voice Note v2" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60A704922E0250F20078652F /* Debug */,
+				60A704932E0250F20078652F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		60A704942E0250F20078652F /* Build configuration list for PBXNativeTarget "Voice Note v2Tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60A704952E0250F20078652F /* Debug */,
+				60A704962E0250F20078652F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		60A704972E0250F20078652F /* Build configuration list for PBXNativeTarget "Voice Note v2UITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				60A704982E0250F20078652F /* Debug */,
+				60A704992E0250F20078652F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		603E5B312E05F91F0066FA8B /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		603E5B322E05F91F0066FA8B /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 603E5B312E05F91F0066FA8B /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 60A704682E0250F00078652F /* Project object */;
+}

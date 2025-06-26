@@ -1,0 +1,552 @@
+import SwiftUI
+import SwiftData
+
+struct ContentView: View {
+    @EnvironmentObject private var coordinator: AppCoordinator
+    @StateObject private var recordingManager = RecordingManager()
+    @Environment(\.modelContext) private var modelContext
+    @State private var pendingTemplateId: String? = nil
+    @AppStorage("favoriteTemplateId") private var favoriteTemplateIdString: String = ""
+    
+    // Computed property to handle UUID conversion
+    private var favoriteTemplateId: UUID? {
+        if favoriteTemplateIdString.isEmpty {
+            // Default to brainstorm template
+            return UUID(uuidString: "brainstorm") // This will be nil, handled below
+        }
+        return UUID(uuidString: favoriteTemplateIdString)
+    }
+    
+    @ViewBuilder
+    private var headerSection: some View {
+        VStack(spacing: 6) {
+            Text("Voice Note")
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.primary, Color.primary.opacity(0.8)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            
+            Text("Record. Transcribe. Transform.")
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundColor(.secondary)
+                .tracking(0.5)
+        }
+        .padding(.top, 8)
+    }
+    
+    @ViewBuilder
+    private func firstRecordingCard(_ recording: Recording) -> some View {
+        Button(action: {
+            coordinator.showRecordingDetail(recording)
+        }) {
+            HStack(alignment: .top, spacing: 12) {
+                // Large quotation mark
+                Text("\u{201C}")  // Left double quotation mark
+                    .font(.system(size: 36, weight: .light, design: .serif))
+                    .foregroundColor(.secondary.opacity(0.5))
+                    .padding(.top, -8)
+                
+                // Main content
+                VStack(alignment: .leading, spacing: 8) {
+                    // Title if available
+                    if let aiTitle = recording.transcript?.aiTitle {
+                        Text(aiTitle)
+                            .font(.system(.caption, design: .rounded, weight: .semibold))
+                            .lineLimit(1)
+                            .foregroundColor(.primary)
+                    }
+                    
+                    // Duration badge
+                    HStack(spacing: 4) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 10))
+                        Text(formatDuration(recording.duration))
+                            .font(.system(.caption2, design: .rounded, weight: .medium))
+                    }
+                    .foregroundColor(.blue)
+                    
+                    // Transcript text
+                    Group {
+                        if let transcript = recording.transcript?.text.trimmingCharacters(in: .whitespacesAndNewlines),
+                           !transcript.isEmpty {
+                            Text(getDisplayText(for: transcript, with: recording.transcript?.aiTitle))
+                                .font(.system(.caption, design: .rounded))
+                                .foregroundColor(recording.transcript?.aiTitle != nil ? .secondary : .primary)
+                                .lineLimit(recording.transcript?.aiTitle != nil ? 1 : 2)
+                                .multilineTextAlignment(.leading)
+                        } else {
+                            Text("Transcribing...")
+                                .font(.system(.caption, design: .rounded))
+                                .foregroundColor(.secondary)
+                                .italic()
+                        }
+                    }
+                    
+                    // Date
+                    Text(formatRelativeDate(recording.createdAt))
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                // Favorite template button
+                if favoriteTemplateId != nil {
+                    favoriteTemplateButton(for: recording)
+                }
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity)
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .transition(.asymmetric(
+            insertion: .move(edge: .leading).combined(with: .opacity),
+            removal: .opacity
+        ))
+    }
+    
+    @ViewBuilder
+    private func favoriteTemplateButton(for recording: Recording) -> some View {
+        Button(action: {
+            applyFavoriteTemplate(to: recording)
+        }) {
+            HStack(spacing: 4) {
+                if let templateName = getFavoriteTemplateName() {
+                    Image(systemName: templateIcon(for: templateName))
+                        .font(.system(size: 14))
+                    Text(templateName)
+                        .font(.system(.caption, design: .rounded, weight: .medium))
+                } else {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 14))
+                    Text("Template")
+                        .font(.system(.caption, design: .rounded, weight: .medium))
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.blue.opacity(0.15))
+            .foregroundColor(.blue)
+            .cornerRadius(8)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    @ViewBuilder
+    private var recentRecordingsScroll: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                // Add leading spacer to align with content padding
+                Color.clear.frame(width: 0)
+                
+                // Show 2nd+ recordings if they exist
+                if recordingManager.recentRecordings.count > 1 {
+                    ForEach(Array(recordingManager.recentRecordings.dropFirst().prefix(4).enumerated()), id: \.element.id) { index, recording in
+                        RecentRecordingCard(recording: recording) {
+                            coordinator.showRecordingDetail(recording)
+                        }
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .leading).combined(with: .opacity),
+                            removal: .opacity
+                        ))
+                    }
+                } else if recordingManager.recentRecordings.isEmpty {
+                    // Empty state placeholder card
+                    emptyStateCard
+                }
+                
+                // Add trailing spacer for padding
+                Color.clear.frame(width: 16)
+            }
+        }
+        // Fade mask for horizontal scroll
+        .mask(
+            LinearGradient(
+                stops: [
+                    .init(color: .black, location: 0),
+                    .init(color: .black, location: 0.85),
+                    .init(color: .black.opacity(0), location: 1)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+    }
+    
+    @ViewBuilder
+    private var emptyStateCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "mic")
+                    .foregroundColor(.gray)
+                Text("--:--")
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            
+            Text("Record a note")
+                .font(.system(.caption, design: .rounded, weight: .medium))
+                .lineLimit(2)
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
+        .padding(10)
+        .frame(width: 120, height: 120)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+    
+    @ViewBuilder
+    private var floatingLibraryButton: some View {
+        Button(action: {
+            coordinator.showLibrary()
+        }) {
+            VStack(spacing: 4) {
+                Image(systemName: "folder.fill")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(.white)
+                Text("Library")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+            }
+            .frame(width: 64, height: 64)
+            .background(Color.blue)
+            .clipShape(Circle())
+            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+        }
+        .padding(.trailing, 16)
+        .padding(.bottom, 8)
+    }
+    
+    @ViewBuilder
+    private var recentRecordingsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Recent header
+            Text("Recent")
+                .font(.system(.headline, design: .rounded, weight: .semibold))
+            
+            // First recent item
+            if let firstRecording = recordingManager.recentRecordings.first {
+                firstRecordingCard(firstRecording)
+            }
+            
+            // Other recent recordings horizontal scroll
+            recentRecordingsScroll
+                .padding(.horizontal, -16) // Offset parent padding
+        }
+        .animation(.easeInOut(duration: 0.3), value: recordingManager.recentRecordings)
+    }
+    
+    @ViewBuilder
+    private var recordingInterface: some View {
+        VStack(spacing: 16) {
+            // Timer area - fixed height
+            VStack(spacing: 8) {
+                if recordingManager.recordingState == .recording {
+                    RecordingDisplay(
+                        duration: recordingManager.currentDuration,
+                        isRecording: true
+                    )
+                }
+            }
+            .frame(height: 40) // Fixed height whether timer shows or not
+            
+            // Microphone source indicator only - reduced height
+            VStack {
+                if recordingManager.recordingState == .recording {
+                    HStack(spacing: 4) {
+                        Image(systemName: microphoneIcon(for: recordingManager.currentInputDevice))
+                            .font(.system(size: 10))
+                        Text(recordingManager.currentInputDevice)
+                            .font(.system(.caption2, design: .rounded))
+                    }
+                    .foregroundColor(.secondary.opacity(0.8))
+                }
+            }
+            .frame(height: 16)
+            .animation(.easeInOut(duration: 0.25), value: recordingManager.recordingState)
+            .animation(.easeInOut(duration: 0.25), value: recordingManager.currentInputDevice)
+            
+            // BUTTON AND LEVELS - Fixed position, never moves
+            HStack(alignment: .center, spacing: 24) {
+                // Left audio levels
+                AudioLevelVisualizer(
+                    audioLevel: recordingManager.currentAudioLevel,
+                    isRecording: recordingManager.recordingState == .recording,
+                    isVoiceDetected: recordingManager.isVoiceDetected
+                )
+                
+                // MAIN RECORDING BUTTON - NEVER MOVES
+                RecordButton(
+                    state: recordingManager.recordingState,
+                    action: {
+                        Task {
+                            await recordingManager.toggleRecording()
+                        }
+                    }
+                )
+                
+                // Right audio levels
+                AudioLevelVisualizer(
+                    audioLevel: recordingManager.currentAudioLevel,
+                    isRecording: recordingManager.recordingState == .recording,
+                    isVoiceDetected: recordingManager.isVoiceDetected
+                )
+            }
+            
+            // Status text - fixed height
+            VStack {
+                if !recordingManager.statusText.isEmpty {
+                    Text(recordingManager.statusText)
+                        .font(.system(.callout, design: .rounded, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .frame(height: 20) // Fixed height whether status shows or not
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Header
+                headerSection
+                    .padding(.bottom, 40)
+                
+                // FIXED RECORDING INTERFACE - Never moves
+                recordingInterface
+                    .frame(maxHeight: .infinity)
+                
+                // Recent Recordings Section
+                recentRecordingsSection
+                    .padding(.top, 30)
+            }
+            .padding()
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            floatingLibraryButton
+        }
+        .sheet(item: $coordinator.activeSheet) { sheet in
+            switch sheet {
+            case .library:
+                LibraryView(recordingManager: recordingManager)
+            case .settings:
+                SettingsView()
+            case .templatePicker(let recording):
+                TemplatePickerView(recording: recording) { template in
+                    if let recording = recording {
+                        Task {
+                            try await recordingManager.processTemplate(template, for: recording)
+                        }
+                    }
+                }
+            case .recordingDetail(let recording):
+                RecordingDetailView(recording: recording)
+            }
+        }
+        .alert("Permission Required", isPresented: $coordinator.showPermissionAlert) {
+            Button("Settings") {
+                coordinator.openSettings()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Voice Note needs microphone access to record audio. Please enable it in Settings.")
+        }
+        .alert("Transcription Failed", isPresented: $recordingManager.showFailedTranscriptionAlert) {
+            Button("OK") { }
+        } message: {
+            Text(recordingManager.failedTranscriptionMessage)
+        }
+        .onAppear {
+            recordingManager.configure(with: modelContext)
+        }
+        .onChange(of: recordingManager.lastRecordingId) { oldValue, newValue in
+            if let recordingId = newValue,
+               let templateId = pendingTemplateId,
+               let recording = recordingManager.recentRecordings.first(where: { $0.id == recordingId }) {
+                // Clear pending template
+                pendingTemplateId = nil
+                
+                // Apply the template after a short delay to ensure transcription is ready
+                Task {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+                    
+                    // Find the template
+                    let descriptor = FetchDescriptor<Template>(
+                        predicate: #Predicate { template in
+                            template.id.uuidString == templateId
+                        }
+                    )
+                    
+                    if let templates = try? modelContext.fetch(descriptor),
+                       let template = templates.first {
+                        try? await recordingManager.processTemplate(template, for: recording)
+                        
+                        // Show the recording detail
+                        coordinator.showRecordingDetail(recording)
+                    }
+                }
+            }
+        }
+    }
+    
+    // Helper functions for stable hint text
+    private func applyFavoriteTemplate(to recording: Recording) {
+        guard let favoriteId = favoriteTemplateId else {
+            // If no favorite set, try to find brainstorm template
+            let templates = try? modelContext.fetch(FetchDescriptor<Template>())
+            if let brainstormTemplate = templates?.first(where: { $0.name.lowercased().contains("brainstorm") }) {
+                favoriteTemplateIdString = brainstormTemplate.id.uuidString
+                Task {
+                    try? await recordingManager.processTemplate(brainstormTemplate, for: recording)
+                    coordinator.showRecordingDetail(recording)
+                }
+            }
+            return
+        }
+        
+        // Find the favorite template by UUID
+        let descriptor = FetchDescriptor<Template>(
+            predicate: #Predicate { template in
+                template.id == favoriteId
+            }
+        )
+        
+        if let templates = try? modelContext.fetch(descriptor),
+           let template = templates.first {
+            Task {
+                try? await recordingManager.processTemplate(template, for: recording)
+                // Show the recording detail
+                coordinator.showRecordingDetail(recording)
+            }
+        }
+    }
+    
+    private func hintText(for state: RecordButton.RecordingState, isVoiceDetected: Bool = false) -> String {
+        switch state {
+        case .idle: return "Tap to record"
+        case .recording: 
+            return isVoiceDetected ? "Detecting voice..." : "Listening..."
+        case .processing: return "Processing..."
+        }
+    }
+    
+    private func hintOpacity(for state: RecordButton.RecordingState) -> Double {
+        switch state {
+        case .idle: return 1.0
+        case .recording: return 0.7
+        case .processing: return 0.7
+        }
+    }
+    
+    private func microphoneIcon(for device: String) -> String {
+        if device.contains("AirPods") || device.contains("Bluetooth") {
+            return "airpodspro"
+        } else if device.contains("Headset") || device.contains("Wired") {
+            return "headphones"
+        } else if device.contains("Car") {
+            return "car.fill"
+        } else if device.contains("USB") || device.contains("External") {
+            return "mic.fill"
+        } else {
+            return "mic"
+        }
+    }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let minutes = Int(duration) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    private func formatRelativeDate(_ date: Date) -> String {
+        let now = Date()
+        let components = Calendar.current.dateComponents([.hour, .day], from: date, to: now)
+        
+        if let days = components.day, days > 0 {
+            return days == 1 ? "Yesterday" : "\(days) days ago"
+        } else if let hours = components.hour, hours > 0 {
+            return "\(hours)h ago"
+        } else {
+            return "Just now"
+        }
+    }
+    
+    private func getFavoriteTemplateName() -> String? {
+        guard let favoriteId = favoriteTemplateId else { return nil }
+        let descriptor = FetchDescriptor<Template>(
+            predicate: #Predicate { template in
+                template.id == favoriteId
+            }
+        )
+        let templates = try? modelContext.fetch(descriptor)
+        return templates?.first?.name
+    }
+    
+    private func templateIcon(for templateName: String) -> String {
+        switch templateName.lowercased() {
+        case let name where name.contains("summary"):
+            return "doc.text"
+        case let name where name.contains("action"):
+            return "checklist"
+        case let name where name.contains("brainstorm"):
+            return "brain.head.profile"
+        case let name where name.contains("quote"):
+            return "quote.bubble"
+        case let name where name.contains("outline"):
+            return "list.bullet.indent"
+        default:
+            return "wand.and.stars"
+        }
+    }
+    
+    private func getDisplayText(for transcript: String, with aiTitle: String?) -> String {
+        if let aiTitle = aiTitle,
+           transcript.hasPrefix(aiTitle.replacingOccurrences(of: "...", with: "")) {
+            // Skip the title portion and show continuation
+            let titleWithoutEllipsis = aiTitle.replacingOccurrences(of: "...", with: "")
+            return "..." + String(transcript.dropFirst(titleWithoutEllipsis.count)).trimmingCharacters(in: .whitespaces)
+        } else {
+            return transcript
+        }
+    }
+    
+}
+
+// Template Chip Component
+struct TemplateChip: View {
+    let title: String
+    let icon: String
+    let isDisabled: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                Text(title)
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(isDisabled ? Color.gray.opacity(0.2) : Color.blue.opacity(0.15))
+            .foregroundColor(isDisabled ? .gray : .blue)
+            .cornerRadius(16)
+        }
+        .disabled(isDisabled)
+    }
+}
+
+#Preview {
+    ContentView()
+        .environmentObject(AppCoordinator())
+}
