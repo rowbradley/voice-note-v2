@@ -246,24 +246,39 @@ struct ContentView: View {
     @ViewBuilder
     private var recordingInterface: some View {
         VStack(spacing: 16) {
+            // Check if we're recording with live transcription
+            if recordingManager.recordingState == .recording && recordingManager.isUsingLiveTranscription {
+                // Live transcription UI
+                liveTranscriptionInterface
+            } else {
+                // Standard recording UI
+                standardRecordingInterface
+            }
+        }
+    }
+
+    /// Standard recording interface (idle, processing, or recording without live transcription)
+    @ViewBuilder
+    private var standardRecordingInterface: some View {
+        VStack(spacing: 16) {
             // Timer area - fixed height
             VStack(spacing: 8) {
                 if recordingManager.recordingState == .recording {
                     RecordingDisplay(
-                        duration: recordingManager.audioRecordingService.currentDuration,
+                        duration: recordingManager.currentDuration,
                         isRecording: true
                     )
                 }
             }
             .frame(height: 40) // Fixed height whether timer shows or not
-            
+
             // Microphone source indicator only - reduced height
             VStack {
                 if recordingManager.recordingState == .recording {
                     HStack(spacing: 4) {
-                        Image(systemName: microphoneIcon(for: recordingManager.audioRecordingService.currentInputDevice))
+                        Image(systemName: microphoneIcon(for: recordingManager.currentInputDevice))
                             .font(.system(size: 10))
-                        Text(recordingManager.audioRecordingService.currentInputDevice)
+                        Text(recordingManager.currentInputDevice)
                             .font(.system(.caption2, design: .rounded))
                     }
                     .foregroundColor(.secondary.opacity(0.8))
@@ -271,17 +286,17 @@ struct ContentView: View {
             }
             .frame(height: 16)
             .animation(.easeInOut(duration: 0.25), value: recordingManager.recordingState)
-            .animation(.easeInOut(duration: 0.25), value: recordingManager.audioRecordingService.currentInputDevice)
-            
+            .animation(.easeInOut(duration: 0.25), value: recordingManager.currentInputDevice)
+
             // BUTTON AND LEVELS - Fixed position, never moves
             HStack(alignment: .center, spacing: 24) {
                 // Left audio levels
                 AudioLevelVisualizer(
-                    audioLevel: recordingManager.audioRecordingService.currentAudioLevel,
+                    audioLevel: recordingManager.currentAudioLevel,
                     isRecording: recordingManager.recordingState == .recording,
-                    isVoiceDetected: recordingManager.audioRecordingService.isVoiceDetected
+                    isVoiceDetected: recordingManager.isVoiceDetected
                 )
-                
+
                 // MAIN RECORDING BUTTON - NEVER MOVES
                 RecordButton(
                     state: recordingManager.recordingState,
@@ -291,15 +306,15 @@ struct ContentView: View {
                         }
                     }
                 )
-                
+
                 // Right audio levels
                 AudioLevelVisualizer(
-                    audioLevel: recordingManager.audioRecordingService.currentAudioLevel,
+                    audioLevel: recordingManager.currentAudioLevel,
                     isRecording: recordingManager.recordingState == .recording,
-                    isVoiceDetected: recordingManager.audioRecordingService.isVoiceDetected
+                    isVoiceDetected: recordingManager.isVoiceDetected
                 )
             }
-            
+
             // Status text - fixed height
             VStack {
                 if !recordingManager.statusText.isEmpty {
@@ -311,6 +326,47 @@ struct ContentView: View {
             }
             .frame(height: 20) // Fixed height whether status shows or not
         }
+    }
+
+    /// Live transcription interface (recording with iOS 26+ SpeechAnalyzer)
+    @ViewBuilder
+    private var liveTranscriptionInterface: some View {
+        VStack(spacing: 16) {
+            // Microphone source indicator
+            HStack(spacing: 4) {
+                Image(systemName: microphoneIcon(for: recordingManager.currentInputDevice))
+                    .font(.system(size: 10))
+                Text(recordingManager.currentInputDevice)
+                    .font(.system(.caption2, design: .rounded))
+            }
+            .foregroundColor(.secondary.opacity(0.8))
+            .frame(height: 16)
+
+            // Live transcript view
+            LiveTranscriptView(
+                transcript: recordingManager.liveTranscript,
+                isRecording: true,
+                duration: recordingManager.currentDuration
+            )
+            .frame(maxHeight: 250)
+            .transition(.asymmetric(
+                insertion: .scale(scale: 0.95).combined(with: .opacity),
+                removal: .opacity
+            ))
+
+            // Recording controls
+            LiveRecordingControlsView(
+                audioLevel: recordingManager.currentAudioLevel,
+                isVoiceDetected: recordingManager.isVoiceDetected,
+                onStop: {
+                    Task {
+                        await recordingManager.toggleRecording()
+                    }
+                }
+            )
+            .frame(height: 180)
+        }
+        .animation(.easeInOut(duration: 0.3), value: recordingManager.isUsingLiveTranscription)
     }
     
     var body: some View {

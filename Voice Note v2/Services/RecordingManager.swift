@@ -17,10 +17,60 @@ final class RecordingManager {
     var showFailedTranscriptionAlert = false
     var failedTranscriptionMessage = ""
 
-    // Expose audioRecordingService directly - views access its properties via this
+    // MARK: - Live Transcription State
+
+    /// Current live transcript text (volatile + finalized)
+    var liveTranscript: String {
+        liveTranscriptionService.displayText
+    }
+
+    /// Whether live transcription is currently active
+    var isLiveTranscribing: Bool {
+        liveTranscriptionService.isTranscribing
+    }
+
+    /// Whether live transcription is available on this device
+    var transcriptionAvailable: Bool {
+        liveTranscriptionService.isAvailable
+    }
+
+    /// Whether using live transcription for current recording
+    private(set) var isUsingLiveTranscription: Bool = false
+
+    // MARK: - Services
+
+    // Legacy service (fallback) - exposed for views that need audio level/duration during fallback
     let audioRecordingService = AudioRecordingService()
-    private let transcriptionService = TranscriptionService()
+
+    // New iOS 26+ services for live transcription
+    let liveAudioService = LiveAudioService()
+    let liveTranscriptionService = LiveTranscriptionService()
+
+    // Transcription services
+    private let transcriptionService = TranscriptionService()  // Fallback for post-recording
     private let aiService: any AIService
+
+    // MARK: - Computed Properties for UI
+
+    /// Audio level - uses live service when available, falls back to legacy
+    var currentAudioLevel: Float {
+        isUsingLiveTranscription ? liveAudioService.currentAudioLevel : audioRecordingService.currentAudioLevel
+    }
+
+    /// Recording duration - uses live service when available, falls back to legacy
+    var currentDuration: TimeInterval {
+        isUsingLiveTranscription ? liveAudioService.currentDuration : audioRecordingService.currentDuration
+    }
+
+    /// Input device name - uses live service when available, falls back to legacy
+    var currentInputDevice: String {
+        isUsingLiveTranscription ? liveAudioService.currentInputDevice : audioRecordingService.currentInputDevice
+    }
+
+    /// Voice detection - uses live service when available, falls back to legacy
+    var isVoiceDetected: Bool {
+        isUsingLiveTranscription ? liveAudioService.isVoiceDetected : audioRecordingService.isVoiceDetected
+    }
     
     private var modelContext: ModelContext?
     private let logger = Logger(subsystem: "com.voicenote", category: "RecordingManager")
@@ -61,10 +111,42 @@ final class RecordingManager {
         logger.debug("Starting recording...")
         recordingState = .recording
         statusText = "Recording..."
-        
+
+        // Try live transcription first (iOS 26+)
+        if liveTranscriptionService.isAvailable {
+            do {
+                // Ensure model is downloaded
+                if !liveTranscriptionService.isModelDownloaded {
+                    statusText = "Preparing transcription..."
+                    try await liveTranscriptionService.ensureModelAvailable()
+                }
+
+                // Start live audio recording
+                let bufferStream = try await liveAudioService.startRecording()
+
+                // Start live transcription
+                if let format = liveAudioService.audioFormat {
+                    await liveTranscriptionService.startTranscribing(buffers: bufferStream, format: format)
+                }
+
+                isUsingLiveTranscription = true
+                statusText = "Recording with live transcription..."
+                logger.info("Live transcription recording started")
+                return
+
+            } catch {
+                logger.warning("Live transcription failed to start, falling back to legacy: \(error)")
+                // Fall through to legacy recording
+                await liveAudioService.cancelRecording()
+                liveTranscriptionService.reset()
+            }
+        }
+
+        // Fallback to legacy recording (no live transcription)
+        isUsingLiveTranscription = false
         do {
             try await audioRecordingService.startRecording()
-            logger.debug("Recording started successfully")
+            logger.debug("Legacy recording started successfully")
         } catch {
             logger.error("Recording failed: \(error)")
             recordingState = .idle
@@ -76,17 +158,171 @@ final class RecordingManager {
         logger.debug("Stopping recording...")
         recordingState = .processing
         statusText = "Processing..."
-        
+
+        // Handle live transcription case
+        if isUsingLiveTranscription {
+            await stopLiveRecording()
+            return
+        }
+
+        // Legacy recording flow
+        await stopLegacyRecording()
+    }
+
+    /// Stop recording when using live transcription (iOS 26+)
+    private func stopLiveRecording() async {
         do {
-            let (audioURL, duration) = try await audioRecordingService.stopRecording()
-            
-            logger.info("Recording stopped. Duration: \(duration)s, File: \(audioURL)")
-            
+            // Stop audio recording
+            let (audioURL, duration) = try await liveAudioService.stopRecording()
+            logger.info("Live recording stopped. Duration: \(duration)s")
+
+            // Get live transcript
+            let liveTranscriptText = await liveTranscriptionService.stopTranscribing()
+            logger.info("Live transcript: \(liveTranscriptText.count) chars")
+
+            // Reset live transcription flag
+            isUsingLiveTranscription = false
+
             // Save audio file to Documents directory
             let fileName = "\(UUID().uuidString).m4a"
             let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
             let destinationURL = documentsDir.appendingPathComponent(fileName)
-            
+
+            try FileManager.default.moveItem(at: audioURL, to: destinationURL)
+            logger.debug("Audio file saved to: \(destinationURL)")
+
+            // Create recording record
+            let recording = Recording(
+                audioFileName: fileName,
+                duration: duration
+            )
+
+            // Save to SwiftData
+            modelContext?.insert(recording)
+            try modelContext?.save()
+
+            // Set last recording ID
+            lastRecordingId = recording.id
+
+            // Reload recent recordings
+            loadRecentRecordings()
+            logger.info("Recording saved to database")
+
+            // Reset state
+            recordingState = .idle
+            statusText = "Recording saved!"
+
+            // Process transcript
+            Task {
+                await processTranscript(
+                    liveTranscriptText: liveTranscriptText,
+                    audioURL: destinationURL,
+                    recording: recording
+                )
+            }
+
+            // Clear status after delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                self.statusText = ""
+            }
+
+        } catch {
+            logger.error("Failed to stop live recording: \(error)")
+            recordingState = .idle
+            statusText = "Failed to process recording"
+            isUsingLiveTranscription = false
+            liveTranscriptionService.reset()
+        }
+    }
+
+    /// Process transcript - use live transcript if available, fall back to file-based
+    private func processTranscript(liveTranscriptText: String, audioURL: URL, recording: Recording) async {
+        var transcriptText = liveTranscriptText
+
+        // If live transcript is empty or poor quality, fall back to file-based transcription
+        if transcriptText.isEmpty || transcriptionService.isTranscriptionPoor(transcriptText, duration: recording.duration) {
+            logger.info("Live transcript insufficient, falling back to file-based transcription")
+            isTranscribing = true
+            statusText = "Transcribing..."
+
+            do {
+                transcriptText = try await transcriptionService.transcribe(audioURL: audioURL, progressCallback: nil)
+                logger.info("File-based transcription completed: \(transcriptText.count) chars")
+            } catch {
+                logger.error("File-based transcription failed: \(error)")
+                isTranscribing = false
+                statusText = "Transcription failed"
+                failedTranscriptionMessage = "Recording saved. Transcription failed - recording may be too short or contain no audio."
+                showFailedTranscriptionAlert = true
+                return
+            }
+        }
+
+        // Create and assign transcript
+        let transcript = Transcript(text: transcriptText)
+        recording.transcript = transcript
+
+        // Generate AI title
+        await generateTitle(for: transcript, from: transcriptText, recording: recording)
+
+        // Save and update UI
+        try? modelContext?.save()
+        isTranscribing = false
+        statusText = "Transcription complete!"
+        loadRecentRecordings()
+    }
+
+    /// Generate AI title for transcript
+    private func generateTitle(for transcript: Transcript, from transcriptText: String, recording: Recording) async {
+        let shouldGenerateTitle = UserDefaults.standard.bool(forKey: "autoGenerateTitles")
+
+        if shouldGenerateTitle {
+            do {
+                let words = transcriptText.split(separator: " ")
+                let truncatedTranscript = words.prefix(500).joined(separator: " ")
+
+                let titleTask = Task {
+                    try await self.aiService.generateTitle(from: truncatedTranscript)
+                }
+
+                let result = try await withThrowingTaskGroup(of: AIResult.self) { group in
+                    group.addTask { try await titleTask.value }
+                    group.addTask {
+                        try await Task.sleep(nanoseconds: 20_000_000_000)
+                        throw AIError.processingTimeout
+                    }
+
+                    if let first = try await group.next() {
+                        group.cancelAll()
+                        return first
+                    }
+                    throw AIError.processingTimeout
+                }
+
+                transcript.aiTitle = result.text
+                logger.info("Generated title: '\(result.text)'")
+
+            } catch {
+                logger.warning("Title generation failed: \(error)")
+                transcript.aiTitle = generateFallbackTitle(from: transcriptText)
+            }
+        } else {
+            transcript.aiTitle = generateFallbackTitle(from: transcriptText)
+        }
+    }
+
+    /// Legacy recording flow (fallback when live transcription unavailable)
+    private func stopLegacyRecording() async {
+        do {
+            let (audioURL, duration) = try await audioRecordingService.stopRecording()
+
+            logger.info("Recording stopped. Duration: \(duration)s, File: \(audioURL)")
+
+            // Save audio file to Documents directory
+            let fileName = "\(UUID().uuidString).m4a"
+            let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let destinationURL = documentsDir.appendingPathComponent(fileName)
+
             do {
                 try FileManager.default.moveItem(at: audioURL, to: destinationURL)
                 logger.debug("Audio file saved to: \(destinationURL)")
@@ -94,38 +330,38 @@ final class RecordingManager {
                 logger.error("Failed to save audio file: \(error)")
                 throw error
             }
-            
+
             // Create recording record
             let recording = Recording(
                 audioFileName: fileName,
                 duration: duration
             )
-            
+
             // Save to SwiftData
             modelContext?.insert(recording)
             try modelContext?.save()
-            
+
             // Set last recording ID
             lastRecordingId = recording.id
-            
+
             // Reload recent recordings
             loadRecentRecordings()
             logger.info("Recording saved to database. Total recordings: \(self.recentRecordings.count)")
-            
+
             // Reset state immediately - don't block UI
             recordingState = .idle
             statusText = "Recording saved!"
-            
+
             // Start transcription in background (don't block UI)
             Task {
                 // Declare progressTask at function level for proper scope
                 var progressTask: Task<Void, Never>?
-                
+
                 do {
                     isTranscribing = true
                     statusText = "Transcribing..."
                     self.logger.debug("Starting transcription for file: \(destinationURL)")
-                    
+
                     // Show progress updates with cancellable task
                     progressTask = Task {
                         for i in 1...6 {
@@ -148,7 +384,7 @@ final class RecordingManager {
                             }
                         }
                     }
-                    
+
                     let transcriptText = try await transcriptionService.transcribe(audioURL: destinationURL, progressCallback: nil)
                     
                     // Cancel progress updates task
