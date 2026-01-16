@@ -1,31 +1,26 @@
 import SwiftUI
 import AVFoundation
 import Speech
-import Combine
 import SwiftData
+import Observation
 import os.log
 
 @MainActor
-class RecordingManager: ObservableObject {
-    @Published var recordingState: RecordButton.RecordingState = .idle
-    @Published var statusText = ""
-    @Published var recentRecordings: [Recording] = []
-    @Published var isTranscribing = false
-    @Published var isProcessingTemplate = false
-    @Published var lastRecordingId: UUID? = nil
-    @Published var showFailedTranscriptionAlert = false
-    @Published var failedTranscriptionMessage = ""
-    
-    // Republished properties from AudioRecordingService for UI consumption
-    @Published var currentAudioLevel: Float = 0.0
-    @Published var currentDuration: TimeInterval = 0.0
-    @Published var currentInputDevice: String = "Microphone"
-    @Published var isVoiceDetected: Bool = false
-    
+@Observable
+final class RecordingManager {
+    var recordingState: RecordButton.RecordingState = .idle
+    var statusText = ""
+    var recentRecordings: [Recording] = []
+    var isTranscribing = false
+    var isProcessingTemplate = false
+    var lastRecordingId: UUID? = nil
+    var showFailedTranscriptionAlert = false
+    var failedTranscriptionMessage = ""
+
+    // Expose audioRecordingService directly - views access its properties via this
     let audioRecordingService = AudioRecordingService()
     private let transcriptionService = TranscriptionService()
     private let aiService: any AIService
-    private var cancellables = Set<AnyCancellable>()
     
     private var modelContext: ModelContext?
     private let logger = Logger(subsystem: "com.voicenote", category: "RecordingManager")
@@ -33,43 +28,16 @@ class RecordingManager: ObservableObject {
     init() {
         // Set up AI service
         self.aiService = AIServiceFactory.shared.createDefaultService()
-        
+
         // Set default values for UserDefaults if not already set
         if UserDefaults.standard.object(forKey: "autoGenerateTitles") == nil {
             UserDefaults.standard.set(true, forKey: "autoGenerateTitles")
         }
-        
-        setupAudioServiceObservation()
     }
-    
+
     func configure(with modelContext: ModelContext) {
         self.modelContext = modelContext
         loadRecentRecordings()
-    }
-    
-    private func setupAudioServiceObservation() {
-        // Forward audio service changes with throttling for better battery life
-        audioRecordingService.$currentAudioLevel
-            .throttle(for: .milliseconds(200), scheduler: DispatchQueue.main, latest: true) // 5Hz max
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$currentAudioLevel)
-        
-        audioRecordingService.$currentDuration
-            .throttle(for: .milliseconds(200), scheduler: DispatchQueue.main, latest: true) // 5Hz max
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$currentDuration)
-        
-        audioRecordingService.$currentInputDevice
-            .removeDuplicates() // Only update when device actually changes
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$currentInputDevice)
-        
-        audioRecordingService.$isVoiceDetected
-            .removeDuplicates() // Only update when voice detection state changes
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$isVoiceDetected)
-        
-        logger.debug("Audio service observation setup complete with throttling")
     }
     
     func toggleRecording() async {
@@ -444,13 +412,4 @@ class RecordingManager: ObservableObject {
         }
     }
     
-    // MARK: - Cleanup
-    
-    deinit {
-        // Cancel all Combine subscriptions
-        cancellables.removeAll()
-        
-        // Ensure audio service is properly cleaned up
-        // Note: Don't call @MainActor methods from deinit
-    }
 }

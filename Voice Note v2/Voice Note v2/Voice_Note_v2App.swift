@@ -11,7 +11,7 @@ import os.log
 
 @main
 struct Voice_Note_v2App: App {
-    @StateObject private var coordinator = AppCoordinator()
+    @State private var coordinator = AppCoordinator()
     @State private var modelContainer: ModelContainer?
     @State private var databaseError: String?
     @State private var showingDatabaseError = false
@@ -58,7 +58,7 @@ struct Voice_Note_v2App: App {
         WindowGroup {
             if let modelContainer = modelContainer {
                 ContentView()
-                    .environmentObject(coordinator)
+                    .environment(coordinator)
                     .modelContainer(modelContainer)
                     .onAppear {
                         coordinator.bootstrap()

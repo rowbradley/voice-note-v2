@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Security
 import UIKit
 import os.log
@@ -40,9 +41,10 @@ struct JWTValidator {
 
 // MARK: - JWT Manager
 @MainActor
-class JWTManager: ObservableObject {
-    @Published private(set) var isAuthenticated = false
-    @Published private(set) var isRefreshing = false
+@Observable
+final class JWTManager {
+    private(set) var isAuthenticated = false
+    private(set) var isRefreshing = false
     
     private var currentToken: JWT?
     private let keychain = KeychainHelper()

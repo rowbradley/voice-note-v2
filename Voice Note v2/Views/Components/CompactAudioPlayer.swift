@@ -2,7 +2,7 @@ import SwiftUI
 import AVFoundation
 
 struct CompactAudioPlayer: View {
-    @ObservedObject var playbackManager: AudioPlaybackManager
+    @Bindable var playbackManager: AudioPlaybackManager
     @State private var isDragging = false
     @State private var dragValue: Double = 0
     

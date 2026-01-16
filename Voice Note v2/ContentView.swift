@@ -2,8 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @EnvironmentObject private var coordinator: AppCoordinator
-    @StateObject private var recordingManager = RecordingManager()
+    @Environment(AppCoordinator.self) private var coordinator
+    @State private var recordingManager = RecordingManager()
     @Environment(\.modelContext) private var modelContext
     @State private var pendingTemplateId: String? = nil
     @AppStorage("favoriteTemplateId") private var favoriteTemplateIdString: String = ""
@@ -250,7 +250,7 @@ struct ContentView: View {
             VStack(spacing: 8) {
                 if recordingManager.recordingState == .recording {
                     RecordingDisplay(
-                        duration: recordingManager.currentDuration,
+                        duration: recordingManager.audioRecordingService.currentDuration,
                         isRecording: true
                     )
                 }
@@ -261,9 +261,9 @@ struct ContentView: View {
             VStack {
                 if recordingManager.recordingState == .recording {
                     HStack(spacing: 4) {
-                        Image(systemName: microphoneIcon(for: recordingManager.currentInputDevice))
+                        Image(systemName: microphoneIcon(for: recordingManager.audioRecordingService.currentInputDevice))
                             .font(.system(size: 10))
-                        Text(recordingManager.currentInputDevice)
+                        Text(recordingManager.audioRecordingService.currentInputDevice)
                             .font(.system(.caption2, design: .rounded))
                     }
                     .foregroundColor(.secondary.opacity(0.8))
@@ -271,15 +271,15 @@ struct ContentView: View {
             }
             .frame(height: 16)
             .animation(.easeInOut(duration: 0.25), value: recordingManager.recordingState)
-            .animation(.easeInOut(duration: 0.25), value: recordingManager.currentInputDevice)
+            .animation(.easeInOut(duration: 0.25), value: recordingManager.audioRecordingService.currentInputDevice)
             
             // BUTTON AND LEVELS - Fixed position, never moves
             HStack(alignment: .center, spacing: 24) {
                 // Left audio levels
                 AudioLevelVisualizer(
-                    audioLevel: recordingManager.currentAudioLevel,
+                    audioLevel: recordingManager.audioRecordingService.currentAudioLevel,
                     isRecording: recordingManager.recordingState == .recording,
-                    isVoiceDetected: recordingManager.isVoiceDetected
+                    isVoiceDetected: recordingManager.audioRecordingService.isVoiceDetected
                 )
                 
                 // MAIN RECORDING BUTTON - NEVER MOVES
@@ -294,9 +294,9 @@ struct ContentView: View {
                 
                 // Right audio levels
                 AudioLevelVisualizer(
-                    audioLevel: recordingManager.currentAudioLevel,
+                    audioLevel: recordingManager.audioRecordingService.currentAudioLevel,
                     isRecording: recordingManager.recordingState == .recording,
-                    isVoiceDetected: recordingManager.isVoiceDetected
+                    isVoiceDetected: recordingManager.audioRecordingService.isVoiceDetected
                 )
             }
             
@@ -314,6 +314,7 @@ struct ContentView: View {
     }
     
     var body: some View {
+        @Bindable var coordinator = coordinator
         NavigationStack {
             VStack(spacing: 0) {
                 // Header
@@ -548,5 +549,5 @@ struct TemplateChip: View {
 
 #Preview {
     ContentView()
-        .environmentObject(AppCoordinator())
+        .environment(AppCoordinator())
 }

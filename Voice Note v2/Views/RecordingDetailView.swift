@@ -11,7 +11,7 @@ struct RecordingDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var processedNotes: [ProcessedNote]
     
-    @StateObject private var playbackManager = AudioPlaybackManager()
+    @State private var playbackManager = AudioPlaybackManager()
     @State private var showingTemplatePicker = false
     @State private var isProcessingNote = false
     @State private var processingError: String?

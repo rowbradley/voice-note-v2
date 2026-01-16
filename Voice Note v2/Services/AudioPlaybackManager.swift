@@ -1,14 +1,15 @@
 import Foundation
 import AVFoundation
-import Combine
+import Observation
 import os.log
 
 @MainActor
-class AudioPlaybackManager: ObservableObject {
-    @Published var isPlaying = false
-    @Published var isReady = false
-    @Published var progress: Double = 0.0
-    @Published var currentTime: TimeInterval = 0.0
+@Observable
+final class AudioPlaybackManager {
+    var isPlaying = false
+    var isReady = false
+    var progress: Double = 0.0
+    var currentTime: TimeInterval = 0.0
     
     private var audioPlayer: AVAudioPlayer?
     private var timer: Timer?
@@ -128,11 +129,6 @@ class AudioPlaybackManager: ObservableObject {
         }
     }
     
-    deinit {
-        audioPlayer?.stop()
-        timer?.invalidate()
-        try? AVAudioSession.sharedInstance().setActive(false)
-    }
 }
 
 // MARK: - Extensions for better control

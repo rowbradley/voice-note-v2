@@ -1,11 +1,13 @@
 import SwiftUI
 import AVFoundation
+import Observation
 
 @MainActor
-class AppCoordinator: ObservableObject {
-    @Published var activeSheet: ActiveSheet?
-    @Published var showPermissionAlert = false
-    @Published var selectedRecording: Recording?
+@Observable
+final class AppCoordinator {
+    var activeSheet: ActiveSheet?
+    var showPermissionAlert = false
+    var selectedRecording: Recording?
     
     enum ActiveSheet: Identifiable {
         case library

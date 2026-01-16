@@ -2,8 +2,8 @@ import SwiftUI
 
 struct LibraryView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var coordinator: AppCoordinator
-    @ObservedObject var recordingManager: RecordingManager
+    @Environment(AppCoordinator.self) private var coordinator
+    var recordingManager: RecordingManager
     @State private var searchText = ""
     
     var filteredRecordings: [Recording] {

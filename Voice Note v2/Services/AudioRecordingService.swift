@@ -1,13 +1,15 @@
 import AVFoundation
 import Foundation
+import Observation
 import os.log
 
 @MainActor
-class AudioRecordingService: ObservableObject {
-    @Published var currentAudioLevel: Float = 0.0
-    @Published var currentDuration: TimeInterval = 0.0
-    @Published var currentInputDevice: String = "Microphone"
-    @Published var isVoiceDetected: Bool = false
+@Observable
+final class AudioRecordingService {
+    var currentAudioLevel: Float = 0.0
+    var currentDuration: TimeInterval = 0.0
+    var currentInputDevice: String = "Microphone"
+    var isVoiceDetected: Bool = false
     
     private var audioRecorder: AVAudioRecorder?
     private var recordingSession: AVAudioSession = AVAudioSession.sharedInstance()
@@ -199,21 +201,6 @@ class AudioRecordingService: ObservableObject {
         }
     }
     
-    deinit {
-        // Ensure proper cleanup
-        levelTimer?.invalidate()
-        levelTimer = nil
-        NotificationCenter.default.removeObserver(self)
-        
-        // Stop recording if still active
-        if audioRecorder?.isRecording == true {
-            audioRecorder?.stop()
-        }
-        audioRecorder = nil
-        
-        // Deactivate audio session
-        try? recordingSession.setActive(false)
-    }
 }
 
 enum AudioRecordingError: LocalizedError {
