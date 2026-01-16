@@ -343,8 +343,10 @@ struct ContentView: View {
             .frame(height: 16)
 
             // Live transcript view
+            // Access liveTranscriptionService.displayText directly so SwiftUI can track
+            // the @Observable dependency (computed properties don't propagate observation)
             LiveTranscriptView(
-                transcript: recordingManager.liveTranscript,
+                transcript: recordingManager.liveTranscriptionService.displayText,
                 isRecording: true,
                 duration: recordingManager.currentDuration
             )

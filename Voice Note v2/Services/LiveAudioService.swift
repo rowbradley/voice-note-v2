@@ -37,7 +37,7 @@ final class LiveAudioService {
     private var audioFile: AVAudioFile?
     private var recordingStartTime: Date?
     private var levelTimer: Timer?
-    private var bufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation?
+    private var bufferContinuation: AsyncStream<(AVAudioPCMBuffer, AVAudioTime)>.Continuation?
 
     // Voice detection thresholds
     private let voiceThreshold: Float = -40.0  // dB - more sensitive to quiet speech
@@ -56,8 +56,8 @@ final class LiveAudioService {
     // MARK: - Public Methods
 
     /// Start recording and return an async stream of audio buffers for transcription
-    /// - Returns: AsyncStream of audio buffers
-    func startRecording() async throws -> AsyncStream<AVAudioPCMBuffer> {
+    /// - Returns: AsyncStream of audio buffers with timestamps (needed by SpeechAnalyzer)
+    func startRecording() async throws -> AsyncStream<(AVAudioPCMBuffer, AVAudioTime)> {
         logger.info("Starting live audio recording...")
 
         // Configure audio session
@@ -93,8 +93,8 @@ final class LiveAudioService {
 
         logger.debug("Recording to file: \(outputURL)")
 
-        // Create async stream for buffer delivery
-        let (stream, continuation) = AsyncStream<AVAudioPCMBuffer>.makeStream()
+        // Create async stream for buffer delivery (includes timestamp for SpeechAnalyzer)
+        let (stream, continuation) = AsyncStream<(AVAudioPCMBuffer, AVAudioTime)>.makeStream()
         bufferContinuation = continuation
 
         // Handle stream termination
@@ -118,8 +118,8 @@ final class LiveAudioService {
                 }
             }
 
-            // Yield to stream for transcription
-            self.bufferContinuation?.yield(buffer)
+            // Yield to stream for transcription (include timestamp!)
+            self.bufferContinuation?.yield((buffer, time))
 
             // Calculate audio level (on main actor)
             Task { @MainActor in

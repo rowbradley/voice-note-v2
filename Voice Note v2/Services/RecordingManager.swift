@@ -108,47 +108,61 @@ final class RecordingManager {
     }
     
     private func startRecording() async {
-        logger.debug("Starting recording...")
+        logger.info("🔴 Starting recording...")
         recordingState = .recording
         statusText = "Recording..."
 
         // Try live transcription first (iOS 26+)
+        logger.info("🔴 Checking live transcription availability: \(self.liveTranscriptionService.isAvailable)")
         if liveTranscriptionService.isAvailable {
+            logger.info("🔴 Live transcription IS available, attempting to start...")
             do {
                 // Ensure model is downloaded
+                logger.info("🔴 Model downloaded: \(self.liveTranscriptionService.isModelDownloaded)")
                 if !liveTranscriptionService.isModelDownloaded {
                     statusText = "Preparing transcription..."
+                    logger.info("🔴 Downloading model...")
                     try await liveTranscriptionService.ensureModelAvailable()
+                    logger.info("🔴 Model ready")
                 }
 
                 // Start live audio recording
+                logger.info("🔴 Starting live audio service...")
                 let bufferStream = try await liveAudioService.startRecording()
+                logger.info("🔴 Live audio started, format: \(String(describing: self.liveAudioService.audioFormat))")
 
                 // Start live transcription
                 if let format = liveAudioService.audioFormat {
+                    logger.info("🔴 Starting live transcription with format: \(format)")
                     await liveTranscriptionService.startTranscribing(buffers: bufferStream, format: format)
+                    logger.info("🔴 Live transcription started")
+                } else {
+                    logger.error("🔴 No audio format available!")
                 }
 
                 isUsingLiveTranscription = true
                 statusText = "Recording with live transcription..."
-                logger.info("Live transcription recording started")
+                logger.info("🔴 SUCCESS: Live transcription recording started, isUsingLiveTranscription=\(self.isUsingLiveTranscription)")
                 return
 
             } catch {
-                logger.warning("Live transcription failed to start, falling back to legacy: \(error)")
+                logger.warning("🔴 Live transcription failed to start, falling back to legacy: \(error)")
                 // Fall through to legacy recording
                 await liveAudioService.cancelRecording()
                 liveTranscriptionService.reset()
             }
+        } else {
+            logger.info("🔴 Live transcription NOT available, using legacy path")
         }
 
         // Fallback to legacy recording (no live transcription)
         isUsingLiveTranscription = false
+        logger.info("🔴 Using LEGACY recording (no live transcription)")
         do {
             try await audioRecordingService.startRecording()
-            logger.debug("Legacy recording started successfully")
+            logger.info("🔴 Legacy recording started successfully")
         } catch {
-            logger.error("Recording failed: \(error)")
+            logger.error("🔴 Recording failed: \(error)")
             recordingState = .idle
             statusText = "Failed to start recording: \(error.localizedDescription)"
         }

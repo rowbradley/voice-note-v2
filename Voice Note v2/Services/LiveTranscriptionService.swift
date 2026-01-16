@@ -147,9 +147,9 @@ final class LiveTranscriptionService {
 
     /// Start transcribing from an audio buffer stream
     /// - Parameters:
-    ///   - buffers: AsyncStream of audio buffers from LiveAudioService
+    ///   - buffers: AsyncStream of audio buffers with timestamps from LiveAudioService
     ///   - format: The audio format of the buffers
-    func startTranscribing(buffers: AsyncStream<AVAudioPCMBuffer>, format: AVAudioFormat) async {
+    func startTranscribing(buffers: AsyncStream<(AVAudioPCMBuffer, AVAudioTime)>, format: AVAudioFormat) async {
         guard isAvailable else {
             logger.error("SpeechTranscriber not available")
             return
@@ -160,36 +160,44 @@ final class LiveTranscriptionService {
         finalizedText = ""
         isTranscribing = true
 
-        logger.info("Starting live transcription...")
+        logger.info("🎤 Starting live transcription...")
+        logger.info("🎤 Input format: \(format.sampleRate)Hz, \(format.channelCount) channels, \(format.commonFormat.rawValue)")
 
         // Find supported locale
         guard let locale = await getSupportedLocale() else {
-            logger.error("No supported locale found")
+            logger.error("🎤 No supported locale found")
             isTranscribing = false
             return
         }
+        logger.info("🎤 Using locale: \(locale.identifier)")
 
         transcriptionTask = Task {
             do {
                 // Create transcriber with progressive preset for live audio
+                logger.info("🎤 Creating SpeechTranscriber...")
                 let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+                logger.info("🎤 SpeechTranscriber created")
 
                 // Create input sequence
                 let (inputSequence, continuation) = AsyncStream<AnalyzerInput>.makeStream()
                 self.inputContinuationStorage = continuation
 
                 // Create analyzer
+                logger.info("🎤 Creating SpeechAnalyzer...")
                 let analyzer = SpeechAnalyzer(modules: [transcriber])
+                logger.info("🎤 SpeechAnalyzer created")
 
                 // Get the best available audio format for SpeechAnalyzer
                 // SpeechAnalyzer does NOT perform audio conversion internally
+                logger.info("🎤 Getting best available audio format...")
                 guard let targetFormat = try await SpeechAnalyzer.bestAvailableAudioFormat(
                     compatibleWith: [transcriber],
                     considering: format
                 ) else {
-                    self.logger.error("No compatible audio format available")
+                    self.logger.error("🎤 No compatible audio format available")
                     return
                 }
+                logger.info("🎤 Target format: \(targetFormat.sampleRate)Hz, \(targetFormat.commonFormat.rawValue)")
 
                 // Create converter if formats differ
                 let needsConversion = format.sampleRate != targetFormat.sampleRate ||
@@ -198,7 +206,9 @@ final class LiveTranscriptionService {
                     AudioFormatConverter(from: format, to: targetFormat) : nil
 
                 if needsConversion {
-                    self.logger.info("Audio conversion enabled: \(format.sampleRate)Hz \(format.commonFormat.rawValue) → \(targetFormat.sampleRate)Hz \(targetFormat.commonFormat.rawValue)")
+                    self.logger.info("🎤 Audio conversion enabled: \(format.sampleRate)Hz \(format.commonFormat.rawValue) → \(targetFormat.sampleRate)Hz \(targetFormat.commonFormat.rawValue)")
+                } else {
+                    self.logger.info("🎤 No audio conversion needed")
                 }
 
                 // Set up volatile range handler to track in-progress text
@@ -213,13 +223,15 @@ final class LiveTranscriptionService {
                 }
 
                 // Feed audio buffers to analyzer
+                logger.info("🎤 Starting buffer feeding task...")
                 Task {
-                    var sampleTime: CMTime = .zero
-                    // Use target format's sample rate for timing calculations after conversion
-                    let outputSampleRate = targetFormat.sampleRate
+                    var bufferCount = 0
 
-                    for await buffer in buffers {
-                        guard !Task.isCancelled else { break }
+                    for await (buffer, _) in buffers {
+                        guard !Task.isCancelled else {
+                            self.logger.info("🎤 Buffer task cancelled")
+                            break
+                        }
 
                         // Convert buffer if needed (48kHz Float32 → 16kHz Int16)
                         let outputBuffer: AVAudioPCMBuffer
@@ -227,45 +239,68 @@ final class LiveTranscriptionService {
                             do {
                                 outputBuffer = try converter.convert(buffer)
                             } catch {
-                                self.logger.error("Buffer conversion failed: \(error)")
+                                self.logger.error("🎤 Buffer conversion failed: \(error)")
                                 continue  // Skip this buffer
                             }
                         } else {
                             outputBuffer = buffer
                         }
 
-                        let input = AnalyzerInput(buffer: outputBuffer, bufferStartTime: sampleTime)
+                        // Use simple initializer - Apple handles contiguous audio timing automatically
+                        // Per Apple docs: "assumed to start immediately after the previous buffer"
+                        let input = AnalyzerInput(buffer: outputBuffer)
                         continuation.yield(input)
+                        bufferCount += 1
 
-                        // Update sample time based on OUTPUT buffer frame count
-                        let frameDuration = Double(outputBuffer.frameLength) / outputSampleRate
-                        sampleTime = CMTimeAdd(sampleTime, CMTime(seconds: frameDuration, preferredTimescale: 600))
+                        // Log every 50 buffers to track progress
+                        if bufferCount % 50 == 0 {
+                            self.logger.debug("🎤 Fed \(bufferCount) buffers")
+                        }
                     }
 
-                    self.logger.debug("Buffer stream ended")
+                    self.logger.info("🎤 Buffer stream ended after \(bufferCount) buffers")
                     continuation.finish()
                 }
 
                 // Consume transcription results
+                logger.info("🎤 Starting results consumption task...")
                 Task {
                     do {
                         var accumulatedText = ""
+                        var resultCount = 0
+                        self.logger.info("🎤 Waiting for transcriber.results...")
+
                         for try await result in transcriber.results {
-                            guard !Task.isCancelled else { break }
+                            resultCount += 1
+                            guard !Task.isCancelled else {
+                                self.logger.info("🎤 Results task cancelled after \(resultCount) results")
+                                break
+                            }
 
                             // Get the text from the result
                             let text = String(result.text.characters)
+                            self.logger.info("🎤 Result #\(resultCount): isFinal=\(result.isFinal), text='\(text.prefix(50))...'")
 
                             await MainActor.run {
-                                // Update the accumulated finalized text
-                                accumulatedText = text
-                                self.finalizedText = accumulatedText
-                                self.volatileText = ""  // Clear volatile when we get a result
-                                self.logger.debug("Transcription result: '\(text)'")
+                                if result.isFinal {
+                                    // Finalized result: APPEND to accumulated text, clear volatile
+                                    if !text.isEmpty {
+                                        accumulatedText += (accumulatedText.isEmpty ? "" : " ") + text
+                                    }
+                                    self.finalizedText = accumulatedText
+                                    self.volatileText = ""
+                                    self.logger.info("🎤 FINALIZED: '\(text.prefix(30))...' → total: \(accumulatedText.count) chars")
+                                } else {
+                                    // Volatile result: show as in-progress (replaces previous volatile)
+                                    self.volatileText = text
+                                    self.logger.debug("🎤 VOLATILE: '\(text.prefix(30))...'")
+                                }
+                                self.logger.debug("🎤 displayText now: '\(self.displayText.prefix(50))...'")
                             }
                         }
+                        self.logger.info("🎤 Results stream ended after \(resultCount) results")
                     } catch {
-                        self.logger.error("Result stream error: \(error)")
+                        self.logger.error("🎤 Result stream error: \(error)")
                     }
                 }
 

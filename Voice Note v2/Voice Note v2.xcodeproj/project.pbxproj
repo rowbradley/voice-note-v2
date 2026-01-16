@@ -26,7 +26,6 @@
 		60A704E82E0254360078652F /* AudioPlaybackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B92E0254360078652F /* AudioPlaybackManager.swift */; };
 		60A704E92E0254360078652F /* TemplateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C12E0254360078652F /* TemplateManager.swift */; };
 		60A704EA2E0254360078652F /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C92E0254360078652F /* LibraryView.swift */; };
-		60A704EC2E0254360078652F /* Voice_Note_v2App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704D22E0254360078652F /* Voice_Note_v2App.swift */; };
 		60A704ED2E0254360078652F /* RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CB2E0254360078652F /* RecordButton.swift */; };
 		60A704EE2E0254360078652F /* NetworkMonitorProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BF2E0254360078652F /* NetworkMonitorProtocol.swift */; };
 		60A704EF2E0254360078652F /* RecentRecordingCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CA2E0254360078652F /* RecentRecordingCard.swift */; };
@@ -39,7 +38,6 @@
 		60A704F82E0254360078652F /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B72E0254360078652F /* AIService.swift */; };
 		60A704FB2E0254360078652F /* Recording.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B22E0254360078652F /* Recording.swift */; };
 		60A704FD2E0254360078652F /* AudioRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BA2E0254360078652F /* AudioRecordingService.swift */; };
-		60A704FE2E0254360078652F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 60A704D12E0254360078652F /* Assets.xcassets */; };
 		60A704FF2E0254360078652F /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 60A704A42E0254360078652F /* Config.plist */; };
 		60A705072E026C4E0078652F /* CompactAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A705022E026C4E0078652F /* CompactAudioPlayer.swift */; };
 		60A705082E026C4E0078652F /* NoteCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A705042E026C4E0078652F /* NoteCardView.swift */; };
@@ -477,7 +475,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				60A704FE2E0254360078652F /* Assets.xcassets in Resources */,
 				60A704FF2E0254360078652F /* Config.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -521,7 +518,6 @@
 				60A704E92E0254360078652F /* TemplateManager.swift in Sources */,
 				603E5B2D2E05E64A0066FA8B /* ExpandedContentView.swift in Sources */,
 				60A704EA2E0254360078652F /* LibraryView.swift in Sources */,
-				60A704EC2E0254360078652F /* Voice_Note_v2App.swift in Sources */,
 				60A704ED2E0254360078652F /* RecordButton.swift in Sources */,
 				60A704EE2E0254360078652F /* NetworkMonitorProtocol.swift in Sources */,
 				60A704EF2E0254360078652F /* RecentRecordingCard.swift in Sources */,
