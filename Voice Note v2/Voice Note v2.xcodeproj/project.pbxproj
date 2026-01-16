@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		3231DBF6B17D479EC16CF64A /* LiveAudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE902CF99F13180690FEDC0D /* LiveAudioService.swift */; };
-		AFC05678B17D479EC16CF64A /* AudioFormatConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC01234B17D479EC16CF64A /* AudioFormatConverter.swift */; };
 		603E5B2D2E05E64A0066FA8B /* ExpandedContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603E5B2B2E05E64A0066FA8B /* ExpandedContentView.swift */; };
 		603E5B332E05F91F0066FA8B /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 603E5B322E05F91F0066FA8B /* MarkdownUI */; };
 		603E5B362E05F9530066FA8B /* EnhancedMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603E5B342E05F9530066FA8B /* EnhancedMarkdownView.swift */; };
@@ -42,6 +41,7 @@
 		60A705072E026C4E0078652F /* CompactAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A705022E026C4E0078652F /* CompactAudioPlayer.swift */; };
 		60A705082E026C4E0078652F /* NoteCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A705042E026C4E0078652F /* NoteCardView.swift */; };
 		765C6AE04C3A293CCE29EE0F /* LiveTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB8AAF16FCD56DEB540FC22A /* LiveTranscriptView.swift */; };
+		AFC05678B17D479EC16CF64A /* AudioFormatConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC01234B17D479EC16CF64A /* AudioFormatConverter.swift */; };
 		D24C31E4A9E2DE1F7EC8CF3F /* AudioFormatConverterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 321A91BD742ABFB91D345D63 /* AudioFormatConverterTests.swift */; };
 		E6B9E974547DC31A2896AD17 /* LiveTranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */; };
 /* End PBXBuildFile section */
@@ -104,16 +104,14 @@
 		60A704D22E0254360078652F /* Voice_Note_v2App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Voice_Note_v2App.swift; sourceTree = "<group>"; };
 		60A705022E026C4E0078652F /* CompactAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactAudioPlayer.swift; sourceTree = "<group>"; };
 		60A705042E026C4E0078652F /* NoteCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCardView.swift; sourceTree = "<group>"; };
-		BE902CF99F13180690FEDC0D /* LiveAudioService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveAudioService.swift; path = ../Services/LiveAudioService.swift; sourceTree = "<group>"; };
 		AFC01234B17D479EC16CF64A /* AudioFormatConverter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioFormatConverter.swift; path = ../Services/AudioFormatConverter.swift; sourceTree = "<group>"; };
+		BE902CF99F13180690FEDC0D /* LiveAudioService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveAudioService.swift; path = ../Services/LiveAudioService.swift; sourceTree = "<group>"; };
 		CB8AAF16FCD56DEB540FC22A /* LiveTranscriptView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptView.swift; path = ../Views/Components/LiveTranscriptView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		60A704722E0250F00078652F /* Voice Note v2 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = "Voice Note v2";
 			sourceTree = "<group>";
 		};
@@ -349,7 +347,6 @@
 		CF99AAA3B56884A05FDFCAC2 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
-				321A91BD742ABFB91D345D63 /* AudioFormatConverterTests.swift */,
 			);
 			name = Tests;
 			sourceTree = "<group>";
@@ -431,7 +428,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1640;
-				LastUpgradeCheck = 1640;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					60A7046F2E0250F00078652F = {
 						CreatedOnToolsVersion = 16.4;
@@ -627,6 +624,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -684,6 +682,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};

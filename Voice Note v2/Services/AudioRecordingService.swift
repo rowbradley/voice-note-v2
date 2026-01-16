@@ -65,33 +65,56 @@ final class AudioRecordingService {
         guard let recorder = audioRecorder else {
             throw AudioRecordingError.noActiveRecording
         }
-        
+
         // Calculate duration BEFORE clearing startTime
         let duration = currentRecordingDuration
-        
+
         recorder.stop()
-        stopLevelMonitoring()
-        
         let recordingURL = recorder.url
+
+        // Wait for file to stabilize (AVAudioRecorder.stop() returns before file is fully flushed)
+        // Poll file size until it stops changing for 200ms
+        var lastSize: UInt64 = 0
+        var stableCount = 0
+
+        for _ in 0..<20 {  // Max 2 seconds
+            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+
+            let attributes = try FileManager.default.attributesOfItem(atPath: recordingURL.path)
+            let currentSize = attributes[.size] as? UInt64 ?? 0
+
+            if currentSize > 0 && currentSize == lastSize {
+                stableCount += 1
+                if stableCount >= 2 { break }  // Stable for 200ms
+            } else {
+                stableCount = 0
+            }
+            lastSize = currentSize
+        }
+
+        logger.debug("Recording file stabilized at \(lastSize) bytes")
+
+        // Cleanup
+        stopLevelMonitoring()
         audioRecorder = nil
         recordingStartTime = nil
-        
+
         // Remove route change notifications
         NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
-        
+
         // Deactivate audio session
         try recordingSession.setActive(false)
-        
+
         return (recordingURL, duration)
     }
     
     private func configureAudioSession() throws {
         // Configure for optimal speech recording
+        // .allowBluetoothHFP enables Bluetooth input - iOS routes automatically
+        // NOTE: setPreferredInput() breaks AVAudioEngine tap callbacks, don't use it
         try recordingSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
-        
-        // Activate the session
         try recordingSession.setActive(true)
-        
+
         logger.debug("Audio session configured")
     }
     

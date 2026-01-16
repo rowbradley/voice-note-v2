@@ -276,8 +276,8 @@ final class RecordingManager {
         let transcript = Transcript(text: transcriptText)
         recording.transcript = transcript
 
-        // Generate AI title
-        await generateTitle(for: transcript, from: transcriptText, recording: recording)
+        // Generate title (synchronous - uses first line)
+        generateTitle(for: transcript, from: transcriptText, recording: recording)
 
         // Save and update UI
         try? modelContext?.save()
@@ -286,42 +286,26 @@ final class RecordingManager {
         loadRecentRecordings()
     }
 
-    /// Generate AI title for transcript
-    private func generateTitle(for transcript: Transcript, from transcriptText: String, recording: Recording) async {
-        let shouldGenerateTitle = UserDefaults.standard.bool(forKey: "autoGenerateTitles")
+    /// Generate title from first line of transcript (synchronous, no AI)
+    private func generateTitle(for transcript: Transcript, from transcriptText: String, recording: Recording) {
+        // Simple: first line of transcript, truncated to fit
+        let firstLine = transcriptText
+            .components(separatedBy: .newlines)
+            .first?
+            .trimmingCharacters(in: .whitespaces) ?? ""
 
-        if shouldGenerateTitle {
-            do {
-                let words = transcriptText.split(separator: " ")
-                let truncatedTranscript = words.prefix(500).joined(separator: " ")
-
-                let titleTask = Task {
-                    try await self.aiService.generateTitle(from: truncatedTranscript)
-                }
-
-                let result = try await withThrowingTaskGroup(of: AIResult.self) { group in
-                    group.addTask { try await titleTask.value }
-                    group.addTask {
-                        try await Task.sleep(nanoseconds: 20_000_000_000)
-                        throw AIError.processingTimeout
-                    }
-
-                    if let first = try await group.next() {
-                        group.cancelAll()
-                        return first
-                    }
-                    throw AIError.processingTimeout
-                }
-
-                transcript.aiTitle = result.text
-                logger.info("Generated title: '\(result.text)'")
-
-            } catch {
-                logger.warning("Title generation failed: \(error)")
-                transcript.aiTitle = generateFallbackTitle(from: transcriptText)
-            }
+        // Truncate to ~50 chars with ellipsis if needed
+        if firstLine.count > 50 {
+            let truncated = String(firstLine.prefix(47)) + "..."
+            transcript.aiTitle = truncated
+            logger.info("Generated title from first line (truncated): '\(truncated)'")
+        } else if !firstLine.isEmpty {
+            transcript.aiTitle = firstLine
+            logger.info("Generated title from first line: '\(firstLine)'")
         } else {
-            transcript.aiTitle = generateFallbackTitle(from: transcriptText)
+            // Fallback to date-based title if transcript is empty
+            transcript.aiTitle = "Recording \(recording.createdAt.formatted(date: .abbreviated, time: .shortened))"
+            logger.info("Generated fallback title")
         }
     }
 
@@ -414,67 +398,9 @@ final class RecordingManager {
                     let transcript = Transcript(text: transcriptText)
                     recording.transcript = transcript
                     self.logger.debug("Assigned transcript to recording")
-                    
-                    // Generate AI title in background with timeout protection
-                    let shouldGenerateTitle = UserDefaults.standard.bool(forKey: "autoGenerateTitles")
-                    self.logger.debug("Auto-generate titles enabled: \(shouldGenerateTitle)")
-                    
-                    if shouldGenerateTitle {
-                        Task.detached { [weak self] in
-                            guard let self = self else { return }
-                            
-                            do {
-                            // Truncate transcript for title generation (max 500 words)
-                            let words = transcriptText.split(separator: " ")
-                            let truncatedTranscript = words.prefix(500).joined(separator: " ")
-                            self.logger.debug("Requesting title generation. Transcript length: \(truncatedTranscript.count) chars")
-                            
-                            // Add timeout protection - increased to 20 seconds
-                            let titleTask = Task {
-                                try await self.aiService.generateTitle(from: truncatedTranscript)
-                            }
-                            
-                            // Wait for result with timeout
-                            let result = try await withThrowingTaskGroup(of: AIResult.self) { group in
-                                group.addTask { try await titleTask.value }
-                                group.addTask {
-                                    try await Task.sleep(nanoseconds: 20_000_000_000) // 20 second timeout
-                                    throw AIError.processingTimeout
-                                }
-                                
-                                if let first = try await group.next() {
-                                    group.cancelAll()
-                                    return first
-                                }
-                                throw AIError.processingTimeout
-                            }
-                            
-                            await MainActor.run {
-                                transcript.aiTitle = result.text
-                                try? self.modelContext?.save()
-                                self.logger.info("Generated title: '\(result.text)' (method: \(result.model ?? "unknown"))")
-                                
-                                // Reload to update UI
-                                self.loadRecentRecordings()
-                            }
-                        } catch {
-                            await MainActor.run {
-                                self.logger.warning("Failed to generate title: \(error)")
-                                // Generate fallback title
-                                let fallbackTitle = self.generateFallbackTitle(from: transcriptText)
-                                transcript.aiTitle = fallbackTitle
-                                self.logger.debug("Using fallback title: '\(fallbackTitle)'")
-                                try? self.modelContext?.save()
-                                self.loadRecentRecordings()
-                            }
-                        }
-                    }
-                    } else {
-                        // Set default title if auto-generation is disabled
-                        transcript.aiTitle = self.generateFallbackTitle(from: transcriptText)
-                        try? modelContext?.save()
-                        loadRecentRecordings()
-                    }
+
+                    // Generate title (synchronous - uses first line)
+                    self.generateTitle(for: transcript, from: transcriptText, recording: recording)
                     
                     // Save transcript
                     try modelContext?.save()

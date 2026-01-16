@@ -239,6 +239,8 @@ final class LiveAudioService {
         let session = AVAudioSession.sharedInstance()
 
         // Configure for recording with playback capability
+        // .allowBluetoothHFP enables Bluetooth input - iOS routes automatically
+        // NOTE: setPreferredInput() breaks AVAudioEngine tap callbacks, don't use it
         try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
         try session.setActive(true)
 

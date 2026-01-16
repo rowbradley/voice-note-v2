@@ -32,19 +32,19 @@ class TranscriptionService {
     
     func transcribe(audioURL: URL, progressCallback: ((String) -> Void)? = nil) async throws -> String {
         self.logger.info("TranscriptionService.transcribe() called with URL: \(audioURL)")
-        
+
         // Check if file exists
         guard FileManager.default.fileExists(atPath: audioURL.path) else {
             self.logger.error("Audio file does not exist at path: \(audioURL.path)")
             throw TranscriptionError.invalidResponse
         }
-        
+
         // Check file size and duration
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: audioURL.path)
             let fileSize = attributes[.size] as? NSNumber
             self.logger.info("Audio file size: \(fileSize?.intValue ?? 0) bytes")
-            
+
             // Check audio duration and format
             let asset = AVURLAsset(url: audioURL)
             let duration: Double
@@ -54,7 +54,7 @@ class TranscriptionService {
                 duration = CMTimeGetSeconds(asset.duration)
             }
             self.logger.info("Audio duration: \(duration) seconds")
-            
+
             // Check if audio has proper format
             if #available(iOS 16.0, *) {
                 let tracks = try? await asset.loadTracks(withMediaType: .audio)
@@ -70,25 +70,58 @@ class TranscriptionService {
         } catch {
             self.logger.warning("Could not get file attributes: \(error)")
         }
-        
-        // Perform transcription using iOS Speech Recognition
+
+        // Perform transcription with retry for file readiness issues
+        progressCallback?("Transcribing...")
+
+        var lastError: Error?
+        let delays: [UInt64] = [200_000_000, 400_000_000, 800_000_000]  // 200ms, 400ms, 800ms
+
+        for (attempt, delay) in delays.enumerated() {
+            do {
+                self.logger.info("Attempting on-device transcription (attempt \(attempt + 1)/\(delays.count + 1))...")
+                let result = try await performOnDeviceTranscription(audioURL: audioURL)
+
+                if !result.isEmpty {
+                    self.logger.info("✅ Transcription succeeded with \(result.count) characters")
+                    return result
+                }
+
+                self.logger.info("⚠️ Transcription returned empty result")
+                throw TranscriptionError.invalidResponse
+
+            } catch {
+                lastError = error
+                let nsError = error as NSError
+
+                // Only retry for "no speech detected" (1110) or recognition failed (301) errors
+                // These often indicate file not ready rather than actual empty audio
+                if nsError.code == 1110 || nsError.code == 301 {
+                    self.logger.info("Transcription attempt \(attempt + 1) failed with code \(nsError.code), retrying in \(delay / 1_000_000)ms...")
+                    try? await Task.sleep(nanoseconds: delay)
+                    continue
+                }
+
+                // Don't retry other errors
+                self.logger.info("❌ Transcription failed with non-retriable error: \(error)")
+                throw error
+            }
+        }
+
+        // Final attempt
         do {
-            self.logger.info("Attempting on-device transcription...")
-            progressCallback?("Transcribing...")
-            
+            self.logger.info("Final transcription attempt...")
             let result = try await performOnDeviceTranscription(audioURL: audioURL)
-            
+
             if !result.isEmpty {
-                self.logger.info("✅ Transcription succeeded with \(result.count) characters")
+                self.logger.info("✅ Final transcription succeeded with \(result.count) characters")
                 return result
             }
-            
-            self.logger.info("⚠️ Transcription returned empty result")
+
             throw TranscriptionError.invalidResponse
-            
         } catch {
-            self.logger.info("❌ Transcription failed: \(error)")
-            throw error
+            self.logger.info("❌ All transcription attempts failed. Last error: \(lastError ?? error)")
+            throw lastError ?? error
         }
     }
     

@@ -11,13 +11,18 @@ struct LiveTranscriptView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Transcript area
+            // Transcript area with progressive scroll (old text fades at top)
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: Spacing.md) {
                         if transcript.isEmpty {
-                            // Empty state - waiting for speech
-                            emptyStateView
+                            if isRecording {
+                                // During recording, waiting for speech
+                                recordingEmptyState
+                            } else {
+                                // Idle state (before recording)
+                                idleEmptyState
+                            }
                         } else {
                             // Transcript text
                             Text(transcript)
@@ -25,14 +30,15 @@ struct LiveTranscriptView: View {
                                 .foregroundColor(.primary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .multilineTextAlignment(.leading)
+                                .lineSpacing(Spacing.xs)
                         }
 
-                        // Invisible anchor for scrolling
+                        // Bottom anchor for scrolling
                         Color.clear
                             .frame(height: 1)
                             .id("bottom")
                     }
-                    .padding(16)
+                    .padding(Spacing.md)
                 }
                 .onChange(of: transcript) { _, _ in
                     withAnimation(.easeOut(duration: 0.2)) {
@@ -41,17 +47,38 @@ struct LiveTranscriptView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Fade mask at top - old text fades out as it scrolls up
+            .mask(
+                VStack(spacing: 0) {
+                    LinearGradient(
+                        colors: [.clear, .black],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 24)
 
-            // Bottom bar with recording indicator and duration
-            recordingStatusBar
+                    Color.black  // Fully visible below gradient
+                }
+            )
+            .debugBorder(.green)
+            .debugSize("TranscriptScrollArea")
+
+            // Bottom bar with recording indicator and duration (only during recording)
+            if isRecording {
+                recordingStatusBar
+                    .debugBorder(.orange)
+                    .debugSize("StatusBar")
+            }
         }
         .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.lg))
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.red, lineWidth: 3)
-                .opacity(isPulsing ? 0.3 : 1.0)
+            RoundedRectangle(cornerRadius: Radius.lg)
+                .stroke(isRecording ? Color.red : Color(.systemGray4), lineWidth: isRecording ? 2 : 1)
+                .opacity(isRecording ? (isPulsing ? 0.4 : 0.8) : 1.0)
         )
+        .debugBorder(.purple)
+        .debugSize("LiveTranscriptView")
         .onAppear {
             if isRecording {
                 startPulsing()
@@ -69,26 +96,34 @@ struct LiveTranscriptView: View {
     // MARK: - Subviews
 
     @ViewBuilder
-    private var emptyStateView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "waveform")
-                .font(.system(size: 32))
-                .foregroundColor(.secondary.opacity(0.5))
-                .symbolEffect(.variableColor.iterative, options: .repeating, value: isRecording)
+    private var idleEmptyState: some View {
+        VStack {
+            Spacer()
+            Text("Tap record to start transcribing.")
+                .font(.system(.body, design: .rounded))
+                .foregroundColor(.secondary.opacity(0.6))
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
+    @ViewBuilder
+    private var recordingEmptyState: some View {
+        VStack(spacing: Spacing.sm) {
+            // No waveform icon - cleaner look
             Text("Listening...")
                 .font(.system(.body, design: .rounded))
                 .foregroundColor(.secondary)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.vertical, 40)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.lg)
     }
 
     @ViewBuilder
     private var recordingStatusBar: some View {
         HStack {
             // Recording indicator
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.sm) {
                 Circle()
                     .fill(Color.red)
                     .frame(width: 8, height: 8)
@@ -106,8 +141,8 @@ struct LiveTranscriptView: View {
                 .font(.system(.callout, design: .monospaced, weight: .medium))
                 .foregroundColor(.secondary)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.sm)
         .background(Color(.systemGray6))
     }
 
@@ -140,10 +175,12 @@ struct LiveRecordingControlsView: View {
     let onStop: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(alignment: .center, spacing: Spacing.sm) {
             // Audio level visualization
             AudioLevelBar(level: audioLevel, isVoiceDetected: isVoiceDetected)
-                .frame(height: 44)
+                .frame(height: ComponentSize.minTouchTarget)
+                .debugBorder(.cyan)
+                .debugSize("AudioLevelBar")
 
             Spacer()
 
@@ -152,22 +189,27 @@ struct LiveRecordingControlsView: View {
                 ZStack {
                     Circle()
                         .fill(Color.red)
-                        .frame(width: 72, height: 72)
+                        .frame(width: ComponentSize.largeButton, height: ComponentSize.largeButton)
                         .shadow(color: Color.red.opacity(0.3), radius: 4, x: 0, y: 2)
 
                     RoundedRectangle(cornerRadius: 6)
                         .fill(Color.white)
-                        .frame(width: 28, height: 28)
+                        .frame(width: ComponentSize.buttonIcon, height: ComponentSize.buttonIcon)
                 }
             }
             .buttonStyle(PlainButtonStyle())
+            .debugBorder(.yellow)
+            .debugSize("StopButton")
 
             Text("Tap to stop")
                 .font(.system(.caption, design: .rounded))
                 .foregroundColor(.secondary)
+                .padding(.top, Spacing.xs)
         }
-        .padding(.horizontal)
-        .padding(.bottom, 40)
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.md)
+        .debugBorder(.blue)
+        .debugSize("LiveRecordingControlsView")
     }
 }
 
@@ -239,7 +281,7 @@ struct AudioLevelBar: View {
     .padding()
 }
 
-#Preview("Empty State") {
+#Preview("Recording Empty State") {
     VStack {
         LiveTranscriptView(
             transcript: "",
@@ -255,5 +297,15 @@ struct AudioLevelBar: View {
         )
         .frame(height: 200)
     }
+    .padding()
+}
+
+#Preview("Idle State") {
+    LiveTranscriptView(
+        transcript: "",
+        isRecording: false,
+        duration: 0
+    )
+    .frame(height: 300)
     .padding()
 }

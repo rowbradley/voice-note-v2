@@ -3,71 +3,71 @@ import SwiftUI
 struct RecentRecordingCard: View {
     let recording: Recording
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 6) {
-                // Top row: Duration and template indicator
-                HStack {
-                    // Duration badge
-                    HStack(spacing: 2) {
-                        Image(systemName: "waveform")
-                            .font(.system(size: 10))
-                        Text(formatDuration(recording.duration))
-                            .font(.system(.caption2, design: .rounded, weight: .medium))
-                    }
-                    .foregroundColor(.blue)
-                    
-                    Spacer()
-                    
-                    // Template indicators
-                    if !recording.processedNotes.isEmpty {
-                        HStack(spacing: 2) {
-                            ForEach(Array(recording.processedNotes.prefix(2)), id: \.id) { note in
-                                Image(systemName: templateIcon(for: note.templateName))
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                            }
-                            if recording.processedNotes.count > 2 {
-                                Text("+\(recording.processedNotes.count - 2)")
-                                    .font(.system(size: 8, design: .rounded))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                }
-                
-                // Title or transcript preview
-                VStack(alignment: .leading, spacing: 2) {
-                    if let aiTitle = recording.transcript?.aiTitle {
-                        Text(aiTitle)
-                            .font(.system(.caption, design: .rounded, weight: .semibold))
-                            .lineLimit(1)
-                            .foregroundColor(.primary)
-                    }
-                    
-                    if let transcript = recording.transcript?.text.trimmingCharacters(in: .whitespacesAndNewlines),
-                       !transcript.isEmpty {
-                        Text(transcript)
-                            .font(.system(.caption2, design: .rounded))
-                            .lineLimit(recording.transcript?.aiTitle != nil ? 1 : 2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                // Quotation mark accent
+                Text("\u{201C}")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.secondary.opacity(0.3))
+
+                // Title flowing into preview (Text concatenation)
+                titleAndPreviewText
+                    .lineLimit(3)
+
                 Spacer(minLength: 0)
-                
-                // Date
-                Text(formatRelativeDate(recording.createdAt))
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundColor(.secondary)
+
+                // Metadata footer
+                HStack {
+                    Text(formatRelativeDate(recording.createdAt))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(formatDuration(recording.duration))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
-            .padding(10)
-            .frame(width: 120, height: 120)
+            .padding(Spacing.md)
+            .frame(width: 180, height: 140)
             .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .clipShape(RoundedRectangle(cornerRadius: Radius.md))
         }
         .buttonStyle(PlainButtonStyle())
+    }
+
+    @ViewBuilder
+    private var titleAndPreviewText: some View {
+        if let aiTitle = recording.transcript?.aiTitle {
+            // Title flowing into body
+            (
+                Text(aiTitle)
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .foregroundColor(.primary)
+                +
+                Text(" — ")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundColor(.secondary)
+                +
+                Text(bodyPreview)
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundColor(.secondary)
+            )
+        } else {
+            // Just body preview
+            Text(bodyPreview)
+                .font(.system(.subheadline, design: .rounded))
+                .foregroundColor(.primary)
+        }
+    }
+
+    private var bodyPreview: String {
+        if let transcript = recording.transcript?.text.trimmingCharacters(in: .whitespacesAndNewlines),
+           !transcript.isEmpty {
+            return transcript
+        }
+        return "Transcribing..."
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {

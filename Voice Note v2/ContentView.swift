@@ -1,6 +1,106 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Design Tokens
+// Single source of truth for all spacing, sizing, and styling values.
+// Enables precise communication: "use .sm (8pt)" instead of "a little smaller"
+
+/// Spacing tokens based on 4pt grid system
+enum Spacing {
+    /// 4pt - Tight internal spacing (icon-to-text, compact lists)
+    static let xs: CGFloat = 4
+    /// 8pt - Standard internal spacing (button padding, list item gaps)
+    static let sm: CGFloat = 8
+    /// 16pt - Standard external spacing (section padding, card margins)
+    static let md: CGFloat = 16
+    /// 24pt - Section separation (between major UI groups)
+    static let lg: CGFloat = 24
+    /// 32pt - Major section separation (screen-level divisions)
+    static let xl: CGFloat = 32
+    /// 40pt - Extra large (bottom safe area, major gutters)
+    static let xxl: CGFloat = 40
+}
+
+/// Corner radius tokens
+enum Radius {
+    /// 8pt - Small elements (buttons, chips, small cards)
+    static let sm: CGFloat = 8
+    /// 12pt - Medium containers (cards, input fields)
+    static let md: CGFloat = 12
+    /// 20pt - Large containers (modal sheets, transcript box)
+    static let lg: CGFloat = 20
+    /// 24pt - Extra large (full-screen overlays)
+    static let xl: CGFloat = 24
+}
+
+/// Component sizing tokens
+enum ComponentSize {
+    /// 44pt - Minimum touch target (Apple HIG requirement)
+    static let minTouchTarget: CGFloat = 44
+    /// 72pt - Large button (stop recording button)
+    static let largeButton: CGFloat = 72
+    /// 28pt - Icon inside large button
+    static let buttonIcon: CGFloat = 28
+}
+
+// MARK: - Debug Utilities
+// Conditional compilation ensures these never ship in production.
+
+extension View {
+    /// Add a colored border to visualize view bounds (DEBUG only)
+    func debugBorder(_ color: Color = .red) -> some View {
+        #if DEBUG
+        self.border(color, width: 1)
+        #else
+        self
+        #endif
+    }
+
+    /// Add a colored background to visualize view area (DEBUG only)
+    func debugBackground(_ color: Color = .blue.opacity(0.2)) -> some View {
+        #if DEBUG
+        self.background(color)
+        #else
+        self
+        #endif
+    }
+
+    /// Print view size to console when layout changes (DEBUG only)
+    func debugSize(_ label: String) -> some View {
+        #if DEBUG
+        self.background(
+            GeometryReader { geo in
+                Color.clear.onAppear {
+                    print("[\(label)] size: \(geo.size.width) x \(geo.size.height)")
+                }
+            }
+        )
+        #else
+        self
+        #endif
+    }
+}
+
+// MARK: - Layout Helpers
+
+extension View {
+    /// Apply standard card styling with consistent radius and padding
+    func cardStyle() -> some View {
+        self
+            .padding(Spacing.md)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.lg))
+    }
+
+    /// Ensure minimum touch target size (44pt x 44pt per Apple HIG)
+    func ensureTouchTarget() -> some View {
+        self.frame(minWidth: ComponentSize.minTouchTarget,
+                   minHeight: ComponentSize.minTouchTarget)
+    }
+}
+
+// MARK: - ContentView
+
 struct ContentView: View {
     @Environment(AppCoordinator.self) private var coordinator
     @State private var recordingManager = RecordingManager()
@@ -30,7 +130,7 @@ struct ContentView: View {
                     )
                 )
             
-            Text("Record. Transcribe. Transform.")
+            Text("Record, transcribe, transform.")
                 .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundColor(.secondary)
                 .tracking(0.5)
@@ -140,13 +240,13 @@ struct ContentView: View {
     @ViewBuilder
     private var recentRecordingsScroll: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.md) {
                 // Add leading spacer to align with content padding
                 Color.clear.frame(width: 0)
-                
-                // Show 2nd+ recordings if they exist
-                if recordingManager.recentRecordings.count > 1 {
-                    ForEach(Array(recordingManager.recentRecordings.dropFirst().prefix(4).enumerated()), id: \.element.id) { index, recording in
+
+                // Show first 3 recordings
+                if !recordingManager.recentRecordings.isEmpty {
+                    ForEach(Array(recordingManager.recentRecordings.prefix(3).enumerated()), id: \.element.id) { index, recording in
                         RecentRecordingCard(recording: recording) {
                             coordinator.showRecordingDetail(recording)
                         }
@@ -155,27 +255,16 @@ struct ContentView: View {
                             removal: .opacity
                         ))
                     }
-                } else if recordingManager.recentRecordings.isEmpty {
+                } else {
                     // Empty state placeholder card
                     emptyStateCard
                 }
-                
+
                 // Add trailing spacer for padding
-                Color.clear.frame(width: 16)
+                Color.clear.frame(width: Spacing.md)
             }
+            .padding(.horizontal, 1)  // Prevent clipping
         }
-        // Fade mask for horizontal scroll
-        .mask(
-            LinearGradient(
-                stops: [
-                    .init(color: .black, location: 0),
-                    .init(color: .black, location: 0.85),
-                    .init(color: .black.opacity(0), location: 1)
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        )
     }
     
     @ViewBuilder
@@ -226,17 +315,12 @@ struct ContentView: View {
     
     @ViewBuilder
     private var recentRecordingsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             // Recent header
             Text("Recent")
                 .font(.system(.headline, design: .rounded, weight: .semibold))
-            
-            // First recent item
-            if let firstRecording = recordingManager.recentRecordings.first {
-                firstRecordingCard(firstRecording)
-            }
-            
-            // Other recent recordings horizontal scroll
+
+            // Horizontal scroll with 3 cards
             recentRecordingsScroll
                 .padding(.horizontal, -16) // Offset parent padding
         }
@@ -331,16 +415,17 @@ struct ContentView: View {
     /// Live transcription interface (recording with iOS 26+ SpeechAnalyzer)
     @ViewBuilder
     private var liveTranscriptionInterface: some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .center, spacing: Spacing.md) {
             // Microphone source indicator
-            HStack(spacing: 4) {
+            HStack(alignment: .center, spacing: Spacing.xs) {
                 Image(systemName: microphoneIcon(for: recordingManager.currentInputDevice))
                     .font(.system(size: 10))
                 Text(recordingManager.currentInputDevice)
                     .font(.system(.caption2, design: .rounded))
             }
             .foregroundColor(.secondary.opacity(0.8))
-            .frame(height: 16)
+            .debugBorder(.gray)
+            .debugSize("MicIndicator")
 
             // Live transcript view
             // Access liveTranscriptionService.displayText directly so SwiftUI can track
@@ -350,7 +435,7 @@ struct ContentView: View {
                 isRecording: true,
                 duration: recordingManager.currentDuration
             )
-            .frame(maxHeight: 250)
+            .frame(maxHeight: 280)
             .transition(.asymmetric(
                 insertion: .scale(scale: 0.95).combined(with: .opacity),
                 removal: .opacity
@@ -366,8 +451,10 @@ struct ContentView: View {
                     }
                 }
             )
-            .frame(height: 180)
+            .frame(height: 140)
         }
+        .debugBorder(.red)
+        .debugSize("LiveTranscriptionInterface")
         .animation(.easeInOut(duration: 0.3), value: recordingManager.isUsingLiveTranscription)
     }
     
@@ -377,15 +464,17 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 // Header
                 headerSection
-                    .padding(.bottom, 40)
-                
-                // FIXED RECORDING INTERFACE - Never moves
+                    .padding(.bottom, Spacing.md)
+
+                // Recording interface - gets most space
                 recordingInterface
+                    .frame(minHeight: 300)
                     .frame(maxHeight: .infinity)
-                
-                // Recent Recordings Section
+
+                // Recent Recordings Section - capped height
                 recentRecordingsSection
-                    .padding(.top, 30)
+                    .padding(.top, Spacing.md)
+                    .frame(maxHeight: 180)
             }
             .padding()
             .navigationBarTitleDisplayMode(.inline)
