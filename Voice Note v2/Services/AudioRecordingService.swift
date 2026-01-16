@@ -85,7 +85,7 @@ class AudioRecordingService: ObservableObject {
     
     private func configureAudioSession() throws {
         // Configure for optimal speech recording
-        try recordingSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+        try recordingSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
         
         // Activate the session
         try recordingSession.setActive(true)
