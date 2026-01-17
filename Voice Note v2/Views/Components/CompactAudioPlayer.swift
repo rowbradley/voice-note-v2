@@ -48,9 +48,12 @@ struct CompactAudioPlayer: View {
                     }
                 }
                 
-                // Share button
+                // Share button - uses ShareableAudioFile for async file preparation
                 if let audioURL = audioURL {
-                    ShareLink(item: audioURL) {
+                    ShareLink(
+                        item: ShareableAudioFile(url: audioURL),
+                        preview: SharePreview("Voice Recording", image: Image(systemName: "waveform"))
+                    ) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 16))
                             .frame(width: 36, height: 36)

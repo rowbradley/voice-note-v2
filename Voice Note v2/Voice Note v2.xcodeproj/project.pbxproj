@@ -31,6 +31,7 @@
 		60A704F32E0254360078652F /* AIServiceFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B82E0254360078652F /* AIServiceFactory.swift */; };
 		60A704F42E0254360078652F /* RecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C02E0254360078652F /* RecordingManager.swift */; };
 		60A704F52E0254360078652F /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C52E0254360078652F /* ShareSheet.swift */; };
+		60A704F62E0254360078652F /* ShareableAudioFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C62E0254370078652F /* ShareableAudioFile.swift */; };
 		60A704F82E0254360078652F /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B72E0254360078652F /* AIService.swift */; };
 		60A704FB2E0254360078652F /* Recording.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B22E0254360078652F /* Recording.swift */; };
 		60A704FD2E0254360078652F /* AudioRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BA2E0254360078652F /* AudioRecordingService.swift */; };
@@ -90,6 +91,7 @@
 		60A704C22E0254360078652F /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
 		60A704C42E0254360078652F /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		60A704C52E0254360078652F /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
+		60A704C62E0254370078652F /* ShareableAudioFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareableAudioFile.swift; sourceTree = "<group>"; };
 		60A704C82E0254360078652F /* AudioLevelVisualizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioLevelVisualizer.swift; sourceTree = "<group>"; };
 		60A704C92E0254360078652F /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		60A704CA2E0254360078652F /* RecentRecordingCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentRecordingCard.swift; sourceTree = "<group>"; };
@@ -279,6 +281,7 @@
 			isa = PBXGroup;
 			children = (
 				60A704C42E0254360078652F /* AppCoordinator.swift */,
+				60A704C62E0254370078652F /* ShareableAudioFile.swift */,
 				60A704C52E0254360078652F /* ShareSheet.swift */,
 			);
 			path = Utilities;
@@ -526,6 +529,7 @@
 				60A704F32E0254360078652F /* AIServiceFactory.swift in Sources */,
 				60A704F42E0254360078652F /* RecordingManager.swift in Sources */,
 				60A704F52E0254360078652F /* ShareSheet.swift in Sources */,
+				60A704F62E0254360078652F /* ShareableAudioFile.swift in Sources */,
 				60A704F82E0254360078652F /* AIService.swift in Sources */,
 				60A704FB2E0254360078652F /* Recording.swift in Sources */,
 				60A704FD2E0254360078652F /* AudioRecordingService.swift in Sources */,
