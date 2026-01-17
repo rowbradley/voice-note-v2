@@ -1,4 +1,3 @@
-import Foundation
 import AVFoundation
 import Observation
 import os.log
@@ -142,10 +141,12 @@ extension AudioPlaybackManager {
     }
     
     func skipForward(seconds: TimeInterval = 15.0) {
-        seek(to: currentTime + seconds)
+        guard duration > 0 else { return }
+        seek(to: (currentTime + seconds) / duration)
     }
-    
+
     func skipBackward(seconds: TimeInterval = 15.0) {
-        seek(to: currentTime - seconds)
+        guard duration > 0 else { return }
+        seek(to: (currentTime - seconds) / duration)
     }
 }
