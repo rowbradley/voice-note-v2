@@ -27,6 +27,9 @@ struct RecordingDetailView: View {
     @State private var expandedContent: ExpandedContentType?
     @State private var transcriptBinding: String = ""
     @State private var noteBinding: String = ""
+
+    // Cached share content for performance (ShareLink accesses item multiple times)
+    @State private var cachedShareContent: String = ""
     
     private let logger = Logger(subsystem: "com.voicenote", category: "RecordingDetailView")
     
@@ -135,8 +138,8 @@ struct RecordingDetailView: View {
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                // Share note content button
-                ShareLink(item: fullNoteContent) {
+                // Share note content button (uses cached content for performance)
+                ShareLink(item: cachedShareContent) {
                     Label("Share Note", systemImage: "square.and.arrow.up")
                 }
             }
@@ -145,9 +148,16 @@ struct RecordingDetailView: View {
             if let audioURL = recording.audioFileURL {
                 playbackManager.setupAudio(url: audioURL)
             }
+            updateShareContent()
         }
         .onDisappear {
             playbackManager.stopPlayback()
+        }
+        .onChange(of: recording.transcript?.text) { _, _ in
+            updateShareContent()
+        }
+        .onChange(of: recordingNotes.count) { _, _ in
+            updateShareContent()
         }
         .sheet(isPresented: $showingTemplatePicker) {
             TemplatePickerView(recording: recording) { template in
@@ -255,9 +265,9 @@ struct RecordingDetailView: View {
             }
             
             HStack {
-                Label(formatDate(recording.createdAt), systemImage: "calendar")
+                Label(Formatters.dateTime(recording.createdAt), systemImage: "calendar")
                 Spacer()
-                Label(formatDuration(recording.duration), systemImage: "clock")
+                Label(Formatters.duration(recording.duration), systemImage: "clock")
             }
             .font(.caption)
             .foregroundColor(.secondary)
@@ -557,22 +567,27 @@ struct RecordingDetailView: View {
     }
     
     
+    /// Updates the cached share content (call when transcript or notes change)
+    private func updateShareContent() {
+        cachedShareContent = fullNoteContent
+    }
+
     private var fullNoteContent: String {
         var content = """
         \(recording.title)
-        \(formatDate(recording.createdAt))
-        Duration: \(formatDuration(recording.duration))
-        
+        \(Formatters.dateTime(recording.createdAt))
+        Duration: \(Formatters.duration(recording.duration))
+
         Transcript:
         \(recording.transcript?.text ?? "No transcript available")
         """
-        
+
         // Add all processed notes
         for note in recordingNotes {
             content += """
-            
-            
-            \(note.templateName) (\(formatDate(note.createdAt))):
+
+
+            \(note.templateName) (\(Formatters.dateTime(note.createdAt))):
             \(note.processedText)
             """
         }
@@ -585,20 +600,7 @@ struct RecordingDetailView: View {
         
         return content
     }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-    
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-    
+
     private func startEditingTitle() {
         editedTitle = recording.title
         isEditingTitle = true

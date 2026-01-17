@@ -20,11 +20,11 @@ struct RecentRecordingCard: View {
 
                 // Metadata footer
                 HStack {
-                    Text(formatRelativeDate(recording.createdAt))
+                    Text(Formatters.relativeDate(recording.createdAt))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text(formatDuration(recording.duration))
+                    Text(Formatters.duration(recording.duration))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -68,52 +68,6 @@ struct RecentRecordingCard: View {
             return transcript
         }
         return "Transcribing..."
-    }
-    
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-    
-    private func formatRelativeDate(_ date: Date) -> String {
-        let now = Date()
-        let components = Calendar.current.dateComponents([.hour, .day], from: date, to: now)
-        
-        if let days = components.day, days > 0 {
-            return days == 1 ? "Yesterday" : "\(days) days ago"
-        } else if let hours = components.hour, hours > 0 {
-            return "\(hours)h ago"
-        } else {
-            return "Just now"
-        }
-    }
-    
-    private func templateIcon(for templateName: String) -> String {
-        switch templateName.lowercased() {
-        case let name where name.contains("summary"):
-            return "doc.text"
-        case let name where name.contains("action"):
-            return "checklist"
-        case let name where name.contains("brainstorm"):
-            return "lightbulb"
-        case let name where name.contains("quote"):
-            return "quote.bubble"
-        case let name where name.contains("outline"):
-            return "list.bullet.indent"
-        case let name where name.contains("flashcard"):
-            return "rectangle.stack"
-        case let name where name.contains("mood"):
-            return "heart"
-        case let name where name.contains("reply"):
-            return "bubble.left.and.bubble.right"
-        case let name where name.contains("section"):
-            return "text.alignleft"
-        case let name where name.contains("question"):
-            return "questionmark.circle"
-        default:
-            return "wand.and.stars"
-        }
     }
 }
 

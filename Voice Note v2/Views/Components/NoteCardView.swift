@@ -67,8 +67,8 @@ struct NoteCardView: View {
                             Text("•")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
-                            
-                            Text(formatDate(createdAt))
+
+                            Text(Formatters.timeOnly(createdAt))
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
@@ -232,14 +232,7 @@ struct NoteCardView: View {
         // Return empty string for unknown templates (use default rendering)
         return ""
     }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-    
+
     private func copyContent() {
         if isMarkdown {
             // Copy as rich text

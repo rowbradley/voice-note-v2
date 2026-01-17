@@ -42,6 +42,10 @@
 		AFC05678B17D479EC16CF64A /* AudioFormatConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC01234B17D479EC16CF64A /* AudioFormatConverter.swift */; };
 		D24C31E4A9E2DE1F7EC8CF3F /* AudioFormatConverterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 321A91BD742ABFB91D345D63 /* AudioFormatConverterTests.swift */; };
 		E6B9E974547DC31A2896AD17 /* LiveTranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */; };
+		0233F48D0EE3C27B7E108F09 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D5974090B42C757B8FF1A82 /* MainTabView.swift */; };
+		B4172504A71A17D3C7D3B688 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02C3892651A6C57E4D359B1 /* RecordingView.swift */; };
+		4B28842B1B1CD8C690F2F15C /* ToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DBCB765DA149B9F13C129AE /* ToolsView.swift */; };
+		503C7E98E254DB5BAB28312A /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB28060469DC97743AEFABE /* DesignTokens.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -102,6 +106,10 @@
 		AFC01234B17D479EC16CF64A /* AudioFormatConverter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioFormatConverter.swift; path = ../Services/AudioFormatConverter.swift; sourceTree = "<group>"; };
 		BE902CF99F13180690FEDC0D /* LiveAudioService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveAudioService.swift; path = ../Services/LiveAudioService.swift; sourceTree = "<group>"; };
 		CB8AAF16FCD56DEB540FC22A /* LiveTranscriptView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptView.swift; path = ../Views/Components/LiveTranscriptView.swift; sourceTree = "<group>"; };
+		0D5974090B42C757B8FF1A82 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		B02C3892651A6C57E4D359B1 /* RecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingView.swift; sourceTree = "<group>"; };
+		7DBCB765DA149B9F13C129AE /* ToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsView.swift; sourceTree = "<group>"; };
+		8AB28060469DC97743AEFABE /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -160,6 +168,7 @@
 				60A704A42E0254360078652F /* Config.plist */,
 				60A704A52E0254360078652F /* Config.swift */,
 				60A704A62E0254360078652F /* ContentView.swift */,
+				8AB28060469DC97743AEFABE /* DesignTokens.swift */,
 				60A704AB2E0254360078652F /* Data */,
 				60A704B12E0254360078652F /* Domain */,
 				60A704B42E0254360078652F /* Models */,
@@ -294,6 +303,9 @@
 				60A704CD2E0254360078652F /* RecordingTimer.swift */,
 				60A704CE2E0254360078652F /* SettingsView.swift */,
 				60A704CF2E0254360078652F /* TemplatePickerView.swift */,
+				0D5974090B42C757B8FF1A82 /* MainTabView.swift */,
+				B02C3892651A6C57E4D359B1 /* RecordingView.swift */,
+				7DBCB765DA149B9F13C129AE /* ToolsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -521,6 +533,10 @@
 				3231DBF6B17D479EC16CF64A /* LiveAudioService.swift in Sources */,
 				765C6AE04C3A293CCE29EE0F /* LiveTranscriptView.swift in Sources */,
 				AFC05678B17D479EC16CF64A /* AudioFormatConverter.swift in Sources */,
+				0233F48D0EE3C27B7E108F09 /* MainTabView.swift in Sources */,
+				B4172504A71A17D3C7D3B688 /* RecordingView.swift in Sources */,
+				4B28842B1B1CD8C690F2F15C /* ToolsView.swift in Sources */,
+				503C7E98E254DB5BAB28312A /* DesignTokens.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

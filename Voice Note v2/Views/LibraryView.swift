@@ -1,9 +1,17 @@
+//
+//  LibraryView.swift
+//  Voice Note v2
+//
+//  Unified library view for both tab navigation and sheet presentation.
+//
+
 import SwiftUI
 
 struct LibraryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppCoordinator.self) private var coordinator
     var recordingManager: RecordingManager
+    var showsDismissButton: Bool = true  // Set false when used in tab navigation
     @State private var searchText = ""
     
     var filteredRecordings: [Recording] {
@@ -39,25 +47,15 @@ struct LibraryView: View {
             .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "Search recordings")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                if showsDismissButton {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            dismiss()
+                        }
                     }
                 }
             }
         }
-    }
-}
-
-struct RecordingRow: View {
-    let recording: Recording
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            RecordingRowContent(recording: recording)
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 

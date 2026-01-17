@@ -74,7 +74,7 @@ struct TemplateRow: View {
     let action: () -> Void
     
     private var templateIcon: String {
-        TemplateIconMapping.icon(for: template.name)
+        TemplateIcons.icon(for: template.name)
     }
     
     var body: some View {
@@ -116,51 +116,6 @@ struct TemplateRow: View {
         .listRowSeparator(.visible)
         .disabled(isEditMode)
     }
-}
-
-// MARK: - Template Icon Mapping
-struct TemplateIconMapping {
-    static func icon(for templateName: String) -> String {
-        // Map template names to SF Symbols
-        switch templateName {
-        case "Cleanup":
-            return "wand.and.stars"
-        case "Smart Summary":
-            return "list.star"
-        case "Action List":
-            return "checklist"
-        case "Message Ready":
-            return "bubble.left.and.text.bubble.right"
-        case "Idea Outline":
-            return "list.bullet.indent"
-        case "Brainstorm":
-            return "lightbulb.max"
-        case "Key Quotes":
-            return "quote.opening"
-        case "Next Questions":
-            return "questionmark.bubble"
-        case "Flashcard Maker":
-            return "rectangle.stack"
-        case "Tone Analysis":
-            return "heart.text.square"
-        default:
-            return "doc.text"
-        }
-    }
-    
-    // Default template order (first-time users)
-    static let defaultOrder: [String] = [
-        "cleanup",
-        "smart-summary", 
-        "action-list",
-        "reply-polish",  // Will be renamed to "Message Ready" 
-        "idea-outline",
-        "brainstorm",
-        "key-quotes",
-        "next-questions",
-        "flashcard-maker",
-        "mood-snapshot"
-    ]
 }
 
 #Preview {

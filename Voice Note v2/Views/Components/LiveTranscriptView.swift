@@ -137,7 +137,7 @@ struct LiveTranscriptView: View {
             Spacer()
 
             // Duration
-            Text(formatDuration(duration))
+            Text(Formatters.duration(duration))
                 .font(.system(.callout, design: .monospaced, weight: .medium))
                 .foregroundColor(.secondary)
         }
@@ -147,13 +147,6 @@ struct LiveTranscriptView: View {
     }
 
     // MARK: - Helpers
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let safeDuration = duration.isFinite ? max(0, duration) : 0.0
-        let minutes = Int(safeDuration) / 60
-        let seconds = Int(safeDuration) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
 
     private func startPulsing() {
         withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {

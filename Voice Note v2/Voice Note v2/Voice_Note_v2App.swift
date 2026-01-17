@@ -56,7 +56,7 @@ struct Voice_Note_v2App: App {
     var body: some Scene {
         WindowGroup {
             if let modelContainer = modelContainer {
-                ContentView()
+                MainTabView()
                     .environment(coordinator)
                     .modelContainer(modelContainer)
                     .onAppear {
