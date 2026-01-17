@@ -91,15 +91,10 @@ final class RecordingManager {
     }
 
     /// Prewarm transcription assets at app launch (non-blocking)
-    /// Downloads the on-device speech recognition model if needed
+    /// Downloads the on-device speech recognition model if needed, then preheats the analyzer
     func prewarmTranscription() {
         guard liveTranscriptionService.isAvailable else {
             logger.info("🔥 Prewarm skipped: Live transcription not available")
-            return
-        }
-
-        guard !liveTranscriptionService.isModelDownloaded else {
-            logger.info("🔥 Prewarm skipped: Model already downloaded")
             return
         }
 
@@ -107,8 +102,18 @@ final class RecordingManager {
 
         Task {
             do {
-                try await liveTranscriptionService.ensureModelAvailable()
-                logger.info("🔥 Prewarm complete: Model ready")
+                // Step 1: Ensure model is downloaded (Optimization 1)
+                if !liveTranscriptionService.isModelDownloaded {
+                    try await liveTranscriptionService.ensureModelAvailable()
+                    logger.info("🔥 Model download complete")
+                } else {
+                    logger.info("🔥 Model already downloaded")
+                }
+
+                // Step 2: Preheat the analyzer (Optimization 2)
+                await liveTranscriptionService.prepareAnalyzer()
+                logger.info("🔥 Prewarm complete: Ready for low-latency recording")
+
             } catch {
                 logger.warning("🔥 Prewarm failed (will retry on first recording): \(error)")
                 // Non-fatal: will retry when user starts recording

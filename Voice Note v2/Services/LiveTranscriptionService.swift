@@ -45,6 +45,12 @@ final class LiveTranscriptionService {
     // Store continuation as Any to avoid direct type dependency issues
     private var inputContinuationStorage: Any?
 
+    // Pre-warmed analyzer components (Optimization 2)
+    private var cachedLocale: Locale?
+    private var cachedTranscriber: SpeechTranscriber?
+    private var cachedAnalyzer: SpeechAnalyzer?
+    private var isPrepared: Bool = false
+
     // MARK: - Lifecycle
 
     init() {
@@ -145,6 +151,63 @@ final class LiveTranscriptionService {
         logger.info("Model download completed successfully")
     }
 
+    /// Prepare the analyzer for minimal startup delay (Optimization 2)
+    /// Call this after ensureModelAvailable() to preheat the ML model
+    func prepareAnalyzer() async {
+        guard isAvailable else {
+            logger.info("🔥 prepareAnalyzer skipped: not available")
+            return
+        }
+
+        guard isModelDownloaded else {
+            logger.info("🔥 prepareAnalyzer skipped: model not downloaded yet")
+            return
+        }
+
+        guard !isPrepared else {
+            logger.info("🔥 prepareAnalyzer skipped: already prepared")
+            return
+        }
+
+        logger.info("🔥 Preparing analyzer for low-latency startup...")
+
+        do {
+            // Get supported locale
+            guard let locale = await getSupportedLocale() else {
+                logger.warning("🔥 prepareAnalyzer: No supported locale")
+                return
+            }
+            cachedLocale = locale
+
+            // Create transcriber
+            let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+            cachedTranscriber = transcriber
+            logger.info("🔥 SpeechTranscriber created for locale: \(locale.identifier)")
+
+            // Create analyzer
+            let analyzer = SpeechAnalyzer(modules: [transcriber])
+            cachedAnalyzer = analyzer
+            logger.info("🔥 SpeechAnalyzer created")
+
+            // Preheat the analyzer with prepareToAnalyze(in:)
+            // Pass nil for format - analyzer will load assets and reconfigure when actual audio arrives
+            // This still provides significant startup delay reduction
+            try await analyzer.prepareToAnalyze(in: nil)
+            logger.info("🔥 Analyzer preheated with prepareToAnalyze(in:)")
+
+            isPrepared = true
+            logger.info("🔥 Analyzer preparation complete - ready for low-latency recording")
+
+        } catch {
+            logger.warning("🔥 prepareAnalyzer failed (will create fresh on recording): \(error)")
+            // Non-fatal: will create fresh analyzer when recording starts
+            cachedTranscriber = nil
+            cachedAnalyzer = nil
+            cachedLocale = nil
+            isPrepared = false
+        }
+    }
+
     /// Start transcribing from an audio buffer stream
     /// - Parameters:
     ///   - buffers: AsyncStream of audio buffers with timestamps from LiveAudioService
@@ -165,29 +228,36 @@ final class LiveTranscriptionService {
         logger.info("🎤 [T+0.000] Starting live transcription...")
         logger.info("🎤 Input format: \(format.sampleRate)Hz, \(format.channelCount) channels, \(format.commonFormat.rawValue)")
 
-        // Find supported locale
-        guard let locale = await getSupportedLocale() else {
-            logger.error("🎤 No supported locale found")
-            isTranscribing = false
-            return
+        // Use cached locale/transcriber/analyzer if prepared, otherwise create fresh
+        let locale: Locale
+        let transcriber: SpeechTranscriber
+        let analyzer: SpeechAnalyzer
+
+        if isPrepared, let cachedLocale = cachedLocale, let cachedTranscriber = cachedTranscriber, let cachedAnalyzer = cachedAnalyzer {
+            // Use pre-warmed components (Optimization 2 - saves ~200-500ms)
+            locale = cachedLocale
+            transcriber = cachedTranscriber
+            analyzer = cachedAnalyzer
+            logger.info("🎤 Using pre-warmed analyzer (isPrepared=true)")
+        } else {
+            // Create fresh components (fallback path)
+            guard let supportedLocale = await getSupportedLocale() else {
+                logger.error("🎤 No supported locale found")
+                isTranscribing = false
+                return
+            }
+            locale = supportedLocale
+            transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+            analyzer = SpeechAnalyzer(modules: [transcriber])
+            logger.info("🎤 Created fresh transcriber/analyzer (isPrepared=false)")
         }
         logger.info("🎤 Using locale: \(locale.identifier)")
 
         transcriptionTask = Task {
             do {
-                // Create transcriber with progressive preset for live audio
-                logger.info("🎤 Creating SpeechTranscriber...")
-                let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
-                logger.info("🎤 SpeechTranscriber created")
-
                 // Create input sequence
                 let (inputSequence, continuation) = AsyncStream<AnalyzerInput>.makeStream()
                 self.inputContinuationStorage = continuation
-
-                // Create analyzer
-                logger.info("🎤 Creating SpeechAnalyzer...")
-                let analyzer = SpeechAnalyzer(modules: [transcriber])
-                logger.info("🎤 SpeechAnalyzer created")
 
                 // Get the best available audio format for SpeechAnalyzer
                 // SpeechAnalyzer does NOT perform audio conversion internally
@@ -382,6 +452,13 @@ final class LiveTranscriptionService {
             continuation.finish()
         }
         inputContinuationStorage = nil
+
+        // Invalidate cached components (analyzer may not be reusable after analyzeSequence)
+        // The underlying model stays in memory via ModelRetention (Optimization 3)
+        cachedTranscriber = nil
+        cachedAnalyzer = nil
+        cachedLocale = nil
+        isPrepared = false
 
         volatileText = ""
         finalizedText = ""
