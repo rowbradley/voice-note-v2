@@ -42,7 +42,26 @@ final class LiveTranscriptionService {
     private let logger = Logger(subsystem: "com.voicenote", category: "LiveTranscription")
     private var transcriptionTask: Task<Void, Never>?
 
-    // Store continuation as Any to avoid direct type dependency issues
+    // MARK: - Type-Erased Continuation Storage
+    //
+    // Why `Any?` instead of `AsyncStream<AnalyzerInput>.Continuation?`:
+    //
+    // The `AnalyzerInput` type is part of the Speech framework's SpeechAnalyzer API
+    // and is only available within async method bodies where SpeechAnalyzer is used.
+    // Attempting to declare a property as `AsyncStream<AnalyzerInput>.Continuation?`
+    // at the class level would require importing the continuation's generic type
+    // parameter into the class scope, which can cause compilation issues with
+    // module boundaries and incremental builds.
+    //
+    // The `Any` type erasure pattern allows us to:
+    // 1. Store the continuation without exposing AnalyzerInput at the class level
+    // 2. Cast back to the specific type when needed (stopTranscribing, reset)
+    // 3. Avoid complex type erasure wrappers for a simple store-and-retrieve case
+    //
+    // Usage:
+    //   Store:   self.inputContinuationStorage = continuation
+    //   Retrieve: if let c = inputContinuationStorage as? AsyncStream<AnalyzerInput>.Continuation { ... }
+    //
     private var inputContinuationStorage: Any?
 
     // Pre-warmed analyzer components (Optimization 2)
