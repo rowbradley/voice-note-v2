@@ -43,6 +43,10 @@ final class LiveAudioService {
     private let voiceThreshold: Float = -40.0  // dB - more sensitive to quiet speech
     private let silenceThreshold: Float = -55.0  // dB - background noise level
 
+    // Interruption handling (for background recording)
+    private var interruptionTask: Task<Void, Never>?
+    private(set) var isInterrupted = false
+
     // MARK: - Lifecycle
 
     init() {
@@ -68,6 +72,9 @@ final class LiveAudioService {
 
         // Setup route change notifications
         setupAudioRouteChangeNotification()
+
+        // Setup interruption monitoring for background recording
+        startInterruptionMonitoring()
 
         // Create audio engine
         let engine = AVAudioEngine()
@@ -206,6 +213,10 @@ final class LiveAudioService {
         // Remove route change notifications
         NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
 
+        // Stop interruption monitoring
+        stopInterruptionMonitoring()
+        isInterrupted = false
+
         // Deactivate audio session
         try AVAudioSession.sharedInstance().setActive(false)
 
@@ -247,6 +258,10 @@ final class LiveAudioService {
 
         // Remove notifications
         NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
+
+        // Stop interruption monitoring
+        stopInterruptionMonitoring()
+        isInterrupted = false
 
         // Deactivate audio session
         try? AVAudioSession.sharedInstance().setActive(false)
@@ -367,6 +382,75 @@ final class LiveAudioService {
     @objc private func handleRouteChange(notification: Notification) {
         Task { @MainActor in
             updateAudioInputDevice()
+        }
+    }
+
+    // MARK: - Interruption Handling (Background Recording)
+
+    private func startInterruptionMonitoring() {
+        interruptionTask = Task { [weak self] in
+            let notifications = NotificationCenter.default.notifications(
+                named: AVAudioSession.interruptionNotification
+            )
+            for await notification in notifications {
+                await self?.handleInterruption(notification)
+            }
+        }
+    }
+
+    private func stopInterruptionMonitoring() {
+        interruptionTask?.cancel()
+        interruptionTask = nil
+    }
+
+    private func handleInterruption(_ notification: Notification) async {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+
+        switch type {
+        case .began:
+            isInterrupted = true
+            // Log reason (iOS 14.5+)
+            if let reasonValue = userInfo[AVAudioSessionInterruptionReasonKey] as? UInt,
+               let reason = AVAudioSession.InterruptionReason(rawValue: reasonValue) {
+                switch reason {
+                case .appWasSuspended:
+                    logger.info("Audio interrupted - app was suspended")
+                case .builtInMicMuted:
+                    logger.info("Audio interrupted - mic muted (iPad)")
+                case .routeDisconnected:
+                    logger.info("Audio interrupted - route disconnected")
+                default:
+                    logger.info("Audio interrupted - another app took focus")
+                }
+            }
+
+        case .ended:
+            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else {
+                return
+            }
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+
+            if options.contains(.shouldResume) {
+                do {
+                    // Must reactivate session before restarting engine
+                    try AVAudioSession.sharedInstance().setActive(true)
+                    try audioEngine?.start()
+                    isInterrupted = false
+                    logger.info("Audio resumed after interruption")
+                } catch {
+                    logger.error("Failed to resume audio: \(error)")
+                }
+            } else {
+                logger.info("Interruption ended but shouldResume=false")
+                // Recording stays paused - user must manually resume
+            }
+
+        @unknown default:
+            break
         }
     }
 }
