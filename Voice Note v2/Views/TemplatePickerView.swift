@@ -1,43 +1,50 @@
 import SwiftUI
+import SwiftData
 
 struct TemplatePickerView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var templateManager = TemplateManager()
+    @Environment(\.modelContext) private var modelContext
+    @State private var templateManager: TemplateManager?
     @State private var isEditMode = false
-    
+
     let recording: Recording?
     let onTemplateSelected: (Template) -> Void
     
     var body: some View {
         NavigationStack {
             Group {
-                if templateManager.isLoading {
+                if let manager = templateManager {
+                    if manager.isLoading {
+                        ProgressView("Loading templates...")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if manager.orderedTemplates.isEmpty {
+                        ContentUnavailableView(
+                            "No Templates Available",
+                            systemImage: "doc.text",
+                            description: Text("Templates help transform your transcripts into structured notes")
+                        )
+                    } else {
+                        List {
+                            ForEach(manager.orderedTemplates, id: \.id) { template in
+                                TemplateRow(
+                                    template: template,
+                                    isEditMode: isEditMode,
+                                    action: {
+                                        if !isEditMode {
+                                            onTemplateSelected(template)
+                                            dismiss()
+                                        }
+                                    }
+                                )
+                            }
+                            .onMove(perform: isEditMode ? moveTemplates : nil)
+                        }
+                        .listStyle(.plain)
+                        .environment(\.editMode, isEditMode ? .constant(.active) : .constant(.inactive))
+                    }
+                } else {
                     ProgressView("Loading templates...")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if templateManager.orderedTemplates.isEmpty {
-                    ContentUnavailableView(
-                        "No Templates Available",
-                        systemImage: "doc.text",
-                        description: Text("Templates help transform your transcripts into structured notes")
-                    )
-                } else {
-                    List {
-                        ForEach(templateManager.orderedTemplates, id: \.id) { template in
-                            TemplateRow(
-                                template: template,
-                                isEditMode: isEditMode,
-                                action: {
-                                    if !isEditMode {
-                                        onTemplateSelected(template)
-                                        dismiss()
-                                    }
-                                }
-                            )
-                        }
-                        .onMove(perform: isEditMode ? moveTemplates : nil)
-                    }
-                    .listStyle(.plain)
-                    .environment(\.editMode, isEditMode ? .constant(.active) : .constant(.inactive))
                 }
             }
             .navigationTitle("Templates")
@@ -50,7 +57,7 @@ struct TemplatePickerView: View {
                         }
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Cancel") {
                         dismiss()
@@ -59,12 +66,15 @@ struct TemplatePickerView: View {
             }
         }
         .task {
-            await templateManager.loadTemplates()
+            if templateManager == nil {
+                templateManager = TemplateManager(modelContext: modelContext)
+            }
+            await templateManager?.loadTemplates()
         }
     }
     
     private func moveTemplates(from source: IndexSet, to destination: Int) {
-        templateManager.reorderTemplates(from: source, to: destination)
+        templateManager?.reorderTemplates(from: source, to: destination)
     }
 }
 

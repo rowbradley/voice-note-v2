@@ -167,8 +167,9 @@ struct SettingsView: View {
 struct DefaultTemplatePickerView: View {
     @Binding var selectedTemplateId: String
     @Environment(\.dismiss) private var dismiss
-    @State private var templateManager = TemplateManager()
-    
+    @Environment(\.modelContext) private var modelContext
+    @State private var templateManager: TemplateManager?
+
     var body: some View {
         List {
             // None option
@@ -186,34 +187,36 @@ struct DefaultTemplatePickerView: View {
                 }
             }
             .foregroundColor(.primary)
-            
+
             // Templates by category
-            ForEach(templateManager.groupedTemplates, id: \.category) { group in
-                Section(group.category.rawValue) {
-                    ForEach(group.templates) { template in
-                        Button(action: {
-                            selectedTemplateId = template.id.uuidString
-                            dismiss()
-                        }) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(template.name)
-                                        .font(.system(.body, design: .rounded))
-                                    Text(template.templateDescription)
-                                        .font(.system(.caption, design: .rounded))
-                                        .foregroundColor(.secondary)
-                                        .lineLimit(2)
-                                }
-                                
-                                Spacer()
-                                
-                                if selectedTemplateId == template.id.uuidString {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+            if let manager = templateManager {
+                ForEach(manager.groupedTemplates, id: \.category) { group in
+                    Section(group.category.rawValue) {
+                        ForEach(group.templates) { template in
+                            Button(action: {
+                                selectedTemplateId = template.id.uuidString
+                                dismiss()
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(template.name)
+                                            .font(.system(.body, design: .rounded))
+                                        Text(template.templateDescription)
+                                            .font(.system(.caption, design: .rounded))
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(2)
+                                    }
+
+                                    Spacer()
+
+                                    if selectedTemplateId == template.id.uuidString {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
+                                    }
                                 }
                             }
+                            .foregroundColor(.primary)
                         }
-                        .foregroundColor(.primary)
                     }
                 }
             }
@@ -221,7 +224,10 @@ struct DefaultTemplatePickerView: View {
         .navigationTitle("Default Template")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await templateManager.loadTemplates()
+            if templateManager == nil {
+                templateManager = TemplateManager(modelContext: modelContext)
+            }
+            await templateManager?.loadTemplates()
         }
     }
 }

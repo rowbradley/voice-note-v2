@@ -180,14 +180,15 @@ struct Voice_Note_v2App: App {
     
     private func deleteStoreFiles() throws {
         // Clean up SwiftData store files
-        let storeDirectory = FileManager.default.urls(for: .applicationSupportDirectory, 
+        // Note: Store filename matches what's used in createModelContainer() - "VoiceNote.store"
+        let storeDirectory = FileManager.default.urls(for: .applicationSupportDirectory,
                                                     in: .userDomainMask)[0]
         if let files = try? FileManager.default.contentsOfDirectory(
             at: storeDirectory,
             includingPropertiesForKeys: nil
         ) {
             for file in files {
-                if file.lastPathComponent.hasPrefix("default.store") {
+                if file.lastPathComponent.hasPrefix("VoiceNote.store") {
                     try? FileManager.default.removeItem(at: file)
                     logger.debug("Cleaned up: \(file.lastPathComponent)")
                 }

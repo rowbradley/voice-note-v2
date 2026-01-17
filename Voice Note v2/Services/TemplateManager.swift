@@ -9,33 +9,18 @@ class TemplateManager {
     private(set) var templates: [Template] = []
     private(set) var isLoading = false
     private(set) var error: Error?
-    
-    private let modelContainer: ModelContainer
+
     private let modelContext: ModelContext
     private let logger = Logger(subsystem: "com.voicenote", category: "TemplateManager")
-    
-    init() {
-        do {
-            // Set up SwiftData container
-            let schema = Schema([Template.self])
-            let modelConfiguration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: false
-            )
-            
-            self.modelContainer = try ModelContainer(
-                for: schema,
-                configurations: [modelConfiguration]
-            )
-            
-            self.modelContext = ModelContext(modelContainer)
-            
-            // Load templates on init
-            Task {
-                await loadTemplates()
-            }
-        } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+
+    /// Initialize with the shared ModelContext from the app's ModelContainer
+    /// This ensures Template data is stored in the same database as Recording, Transcript, etc.
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+
+        // Load templates on init
+        Task {
+            await loadTemplates()
         }
     }
     
