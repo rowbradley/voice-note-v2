@@ -184,15 +184,17 @@ final class LiveTranscriptionService {
             cachedTranscriber = transcriber
             logger.info("🔥 SpeechTranscriber created for locale: \(locale.identifier)")
 
-            // Create analyzer
-            let analyzer = SpeechAnalyzer(modules: [transcriber])
+            // Create analyzer with processLifetime retention (Optimization 3)
+            // Keeps ML models in memory until process exits, avoiding reload on subsequent recordings
+            let options = SpeechAnalyzer.Options(priority: .userInitiated, modelRetention: .processLifetime)
+            let analyzer = SpeechAnalyzer(modules: [transcriber], options: options)
             cachedAnalyzer = analyzer
-            logger.info("🔥 SpeechAnalyzer created")
+            logger.info("🔥 SpeechAnalyzer created with processLifetime retention")
 
             // Preheat the analyzer with prepareToAnalyze(in:)
             // Pass nil for format - analyzer will load assets and reconfigure when actual audio arrives
             // This still provides significant startup delay reduction
-            try await analyzer.prepareToAnalyze(in: nil)
+            try await analyzer.prepareToAnalyze(in: nil as AVAudioFormat?)
             logger.info("🔥 Analyzer preheated with prepareToAnalyze(in:)")
 
             isPrepared = true
@@ -248,8 +250,10 @@ final class LiveTranscriptionService {
             }
             locale = supportedLocale
             transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
-            analyzer = SpeechAnalyzer(modules: [transcriber])
-            logger.info("🎤 Created fresh transcriber/analyzer (isPrepared=false)")
+            // Use processLifetime retention even for fallback path (Optimization 3)
+            let options = SpeechAnalyzer.Options(priority: .userInitiated, modelRetention: .processLifetime)
+            analyzer = SpeechAnalyzer(modules: [transcriber], options: options)
+            logger.info("🎤 Created fresh transcriber/analyzer with processLifetime retention (isPrepared=false)")
         }
         logger.info("🎤 Using locale: \(locale.identifier)")
 
