@@ -48,8 +48,7 @@ struct Voice_Note_v2App: App {
         // Debug: Log configuration
         #if DEBUG
         logger.info("Voice Note Starting...")
-        logger.info("Backend URL: \(Config.backendURL)")
-        logger.info("Using Bootstrap Token Authentication")
+        logger.info("AI Processing: On-Device (Apple Intelligence)")
         Config.logConfiguration()
         #endif
     }

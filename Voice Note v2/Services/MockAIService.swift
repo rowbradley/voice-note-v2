@@ -142,7 +142,7 @@ actor MockAIService: AIService {
     
     func generateSummary(from transcript: String, maxLength: Int) async throws -> AIResult {
         if shouldFail {
-            throw AIError.networkUnavailable
+            throw AIError.aiUnavailable(reason: "Mock failure")
         }
         
         if simulateDelay {
@@ -160,7 +160,7 @@ actor MockAIService: AIService {
         logger.debug("generateTitle called with transcript length: \(transcript.count) chars")
         
         if shouldFail {
-            throw AIError.quotaExceeded(resetDate: Date().addingTimeInterval(3600))
+            throw AIError.aiUnavailable(reason: "Mock failure")
         }
         
         if simulateDelay {

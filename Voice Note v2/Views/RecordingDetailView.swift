@@ -441,29 +441,23 @@ struct RecordingDetailView: View {
             
             let processingTime = Date().timeIntervalSince(startTime)
             
-            // Extract processing time and token usage based on result type
+            // Extract processing time based on result type
             let finalProcessingTime: TimeInterval
-            let tokenUsage: Int?
-            
+
             switch result {
-            case .cloud(let response):
-                finalProcessingTime = response.processingTime
-                tokenUsage = response.usage?.totalTokens
             case .local(let response):
                 finalProcessingTime = response.deviceProcessingTime
-                tokenUsage = nil
             case .mock:
                 finalProcessingTime = processingTime
-                tokenUsage = nil
             }
-            
+
             // Save processed note
             let processedNote = ProcessedNote(
                 templateId: template.id,
                 templateName: template.name,
                 processedText: result.text,
                 processingTime: finalProcessingTime,
-                tokenUsage: tokenUsage
+                tokenUsage: nil  // On-device processing doesn't track tokens
             )
             
             // Add to relationship and save

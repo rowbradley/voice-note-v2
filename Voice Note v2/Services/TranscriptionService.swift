@@ -92,18 +92,27 @@ class TranscriptionService {
 
             } catch {
                 lastError = error
-                let nsError = error as NSError
+
+                // Extract underlying error code from wrapped TranscriptionError
+                // The error may be wrapped as TranscriptionError.recognitionFailed(underlyingError)
+                var errorCode: Int = -1
+                if case TranscriptionError.recognitionFailed(let underlyingError) = error {
+                    errorCode = (underlyingError as NSError).code
+                    self.logger.info("Extracted underlying error code \(errorCode) from TranscriptionError.recognitionFailed")
+                } else {
+                    errorCode = (error as NSError).code
+                }
 
                 // Only retry for "no speech detected" (1110) or recognition failed (301) errors
                 // These often indicate file not ready rather than actual empty audio
-                if nsError.code == 1110 || nsError.code == 301 {
-                    self.logger.info("Transcription attempt \(attempt + 1) failed with code \(nsError.code), retrying in \(delay / 1_000_000)ms...")
+                if errorCode == 1110 || errorCode == 301 {
+                    self.logger.info("Transcription attempt \(attempt + 1) failed with code \(errorCode), retrying in \(delay / 1_000_000)ms...")
                     try? await Task.sleep(nanoseconds: delay)
                     continue
                 }
 
                 // Don't retry other errors
-                self.logger.info("❌ Transcription failed with non-retriable error: \(error)")
+                self.logger.info("❌ Transcription failed with non-retriable error code \(errorCode): \(error)")
                 throw error
             }
         }

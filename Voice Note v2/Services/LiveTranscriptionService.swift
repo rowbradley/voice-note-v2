@@ -160,7 +160,9 @@ final class LiveTranscriptionService {
         finalizedText = ""
         isTranscribing = true
 
-        logger.info("🎤 Starting live transcription...")
+        // Timing diagnostics to understand race condition
+        let startTime = CFAbsoluteTimeGetCurrent()
+        logger.info("🎤 [T+0.000] Starting live transcription...")
         logger.info("🎤 Input format: \(format.sampleRate)Hz, \(format.channelCount) channels, \(format.commonFormat.rawValue)")
 
         // Find supported locale
@@ -223,8 +225,9 @@ final class LiveTranscriptionService {
                 }
 
                 // Feed audio buffers to analyzer
-                logger.info("🎤 Starting buffer feeding task...")
+                logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Spawning buffer feeding task")
                 Task {
+                    self.logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Buffer feeding task STARTED")
                     var bufferCount = 0
 
                     for await (buffer, _) in buffers {
@@ -252,6 +255,11 @@ final class LiveTranscriptionService {
                         continuation.yield(input)
                         bufferCount += 1
 
+                        // Log first buffer for debugging race condition fix
+                        if bufferCount == 1 {
+                            self.logger.info("🎤 First buffer fed to analyzer")
+                        }
+
                         // Log every 50 buffers to track progress
                         if bufferCount % 50 == 0 {
                             self.logger.debug("🎤 Fed \(bufferCount) buffers")
@@ -263,7 +271,7 @@ final class LiveTranscriptionService {
                 }
 
                 // Consume transcription results
-                logger.info("🎤 Starting results consumption task...")
+                logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Spawning results consuming task")
                 Task {
                     do {
                         var accumulatedText = ""
@@ -303,6 +311,12 @@ final class LiveTranscriptionService {
                         self.logger.error("🎤 Result stream error: \(error)")
                     }
                 }
+
+                // Wait briefly to let buffer task start receiving audio (fixes first-click race condition)
+                // Without this, analyzeSequence() may run before any buffers arrive
+                logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Waiting 150ms for buffer task to start...")
+                try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
+                logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Delay complete, starting analyzer")
 
                 // Start analysis
                 let lastSampleTime = try await analyzer.analyzeSequence(inputSequence)

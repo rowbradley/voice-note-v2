@@ -522,20 +522,14 @@ final class RecordingManager {
             let templateInfo = TemplateInfo(from: template)
             let result = try await aiService.processTemplate(templateInfo, transcript: transcript.text)
             
-            // Extract processing time and token usage based on result type
+            // Extract processing time based on result type
             let processingTime: TimeInterval
-            let tokenUsage: Int?
-            
+
             switch result {
-            case .cloud(let response):
-                processingTime = response.processingTime
-                tokenUsage = response.usage?.totalTokens
             case .local(let response):
                 processingTime = response.deviceProcessingTime
-                tokenUsage = nil
             case .mock:
                 processingTime = 0
-                tokenUsage = nil
             }
             
             // Create processed note
@@ -544,7 +538,7 @@ final class RecordingManager {
                 templateName: template.name,
                 processedText: result.text,
                 processingTime: processingTime,
-                tokenUsage: tokenUsage
+                tokenUsage: nil  // On-device processing doesn't track tokens
             )
             
             // Add to relationship and save

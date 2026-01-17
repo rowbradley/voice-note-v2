@@ -156,16 +156,40 @@ final class LiveAudioService {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
 
-        // Finish the buffer stream
-        bufferContinuation?.finish()
-        bufferContinuation = nil
-
-        // Get the file URL
+        // Wait for audio file to stabilize on disk (AVAudioEngine write may not be complete)
+        // Without this, transcription may fail with "no speech detected" (error 1110)
+        // because the file hasn't finished flushing to disk
         guard let audioFile = audioFile else {
             throw LiveAudioError.noActiveRecording
         }
-
         let fileURL = audioFile.url
+        var lastSize: UInt64 = 0
+        var stableCount = 0
+
+        logger.debug("Waiting for audio file to stabilize...")
+        for _ in 0..<20 {  // Max 2 seconds
+            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+
+            guard let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
+                  let currentSize = attributes[.size] as? UInt64 else {
+                continue
+            }
+
+            if currentSize > 0 && currentSize == lastSize {
+                stableCount += 1
+                if stableCount >= 2 {  // Stable for 200ms
+                    logger.debug("Audio file stabilized at \(currentSize) bytes")
+                    break
+                }
+            } else {
+                stableCount = 0
+            }
+            lastSize = currentSize
+        }
+
+        // Finish the buffer stream
+        bufferContinuation?.finish()
+        bufferContinuation = nil
 
         // Cleanup
         self.audioFile = nil

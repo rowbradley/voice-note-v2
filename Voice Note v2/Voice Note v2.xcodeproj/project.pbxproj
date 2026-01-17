@@ -16,8 +16,7 @@
 		60A704DE2E0254360078652F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CE2E0254360078652F /* SettingsView.swift */; };
 		60A704DF2E0254360078652F /* RecordingTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CD2E0254360078652F /* RecordingTimer.swift */; };
 		60A704E02E0254360078652F /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C22E0254360078652F /* TranscriptionService.swift */; };
-		60A704E12E0254360078652F /* CloudAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BB2E0254360078652F /* CloudAIService.swift */; };
-		60A704E22E0254360078652F /* JWTManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BC2E0254360078652F /* JWTManager.swift */; };
+		60A704E12E0254360078652F /* OnDeviceAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BB2E0254360078652F /* OnDeviceAIService.swift */; };
 		60A704E32E0254360078652F /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704A52E0254360078652F /* Config.swift */; };
 		60A704E42E0254360078652F /* Template.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B32E0254360078652F /* Template.swift */; };
 		60A704E52E0254360078652F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704A62E0254360078652F /* ContentView.swift */; };
@@ -33,7 +32,6 @@
 		60A704F32E0254360078652F /* AIServiceFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B82E0254360078652F /* AIServiceFactory.swift */; };
 		60A704F42E0254360078652F /* RecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C02E0254360078652F /* RecordingManager.swift */; };
 		60A704F52E0254360078652F /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C52E0254360078652F /* ShareSheet.swift */; };
-		60A704F62E0254360078652F /* NetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BE2E0254360078652F /* NetworkManager.swift */; };
 		60A704F82E0254360078652F /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B72E0254360078652F /* AIService.swift */; };
 		60A704FB2E0254360078652F /* Recording.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B22E0254360078652F /* Recording.swift */; };
 		60A704FD2E0254360078652F /* AudioRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BA2E0254360078652F /* AudioRecordingService.swift */; };
@@ -67,7 +65,6 @@
 		321A91BD742ABFB91D345D63 /* AudioFormatConverterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioFormatConverterTests.swift; path = Tests/AudioFormatConverterTests.swift; sourceTree = "<group>"; };
 		5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptionService.swift; path = ../Services/LiveTranscriptionService.swift; sourceTree = "<group>"; };
 		603E5AF12E03CCBE0066FA8B /* SpeechTranscribing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechTranscribing.swift; sourceTree = "<group>"; };
-		603E5AF42E03CCBE0066FA8B /* TranscriptionSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSettings.swift; sourceTree = "<group>"; };
 		603E5B2B2E05E64A0066FA8B /* ExpandedContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandedContentView.swift; sourceTree = "<group>"; };
 		603E5B342E05F9530066FA8B /* EnhancedMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedMarkdownView.swift; sourceTree = "<group>"; };
 		60A704702E0250F00078652F /* Voice Note v2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Voice Note v2.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -82,10 +79,8 @@
 		60A704B82E0254360078652F /* AIServiceFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceFactory.swift; sourceTree = "<group>"; };
 		60A704B92E0254360078652F /* AudioPlaybackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackManager.swift; sourceTree = "<group>"; };
 		60A704BA2E0254360078652F /* AudioRecordingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingService.swift; sourceTree = "<group>"; };
-		60A704BB2E0254360078652F /* CloudAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudAIService.swift; sourceTree = "<group>"; };
-		60A704BC2E0254360078652F /* JWTManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JWTManager.swift; sourceTree = "<group>"; };
+		60A704BB2E0254360078652F /* OnDeviceAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceAIService.swift; sourceTree = "<group>"; };
 		60A704BD2E0254360078652F /* MockAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAIService.swift; sourceTree = "<group>"; };
-		60A704BE2E0254360078652F /* NetworkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkManager.swift; sourceTree = "<group>"; };
 		60A704BF2E0254360078652F /* NetworkMonitorProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitorProtocol.swift; sourceTree = "<group>"; };
 		60A704C02E0254360078652F /* RecordingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingManager.swift; sourceTree = "<group>"; };
 		60A704C12E0254360078652F /* TemplateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateManager.swift; sourceTree = "<group>"; };
@@ -257,16 +252,13 @@
 			isa = PBXGroup;
 			children = (
 				603E5AF12E03CCBE0066FA8B /* SpeechTranscribing.swift */,
-				603E5AF42E03CCBE0066FA8B /* TranscriptionSettings.swift */,
 				60A704B72E0254360078652F /* AIService.swift */,
 				60A704B82E0254360078652F /* AIServiceFactory.swift */,
 				60A704B92E0254360078652F /* AudioPlaybackManager.swift */,
 				60A704BA2E0254360078652F /* AudioRecordingService.swift */,
-				60A704BB2E0254360078652F /* CloudAIService.swift */,
-				60A704BC2E0254360078652F /* JWTManager.swift */,
 				60A704BD2E0254360078652F /* MockAIService.swift */,
-				60A704BE2E0254360078652F /* NetworkManager.swift */,
 				60A704BF2E0254360078652F /* NetworkMonitorProtocol.swift */,
+				60A704BB2E0254360078652F /* OnDeviceAIService.swift */,
 				60A704C02E0254360078652F /* RecordingManager.swift */,
 				60A704C12E0254360078652F /* TemplateManager.swift */,
 				60A704C22E0254360078652F /* TranscriptionService.swift */,
@@ -503,8 +495,7 @@
 				60A704DE2E0254360078652F /* SettingsView.swift in Sources */,
 				60A704DF2E0254360078652F /* RecordingTimer.swift in Sources */,
 				60A704E02E0254360078652F /* TranscriptionService.swift in Sources */,
-				60A704E12E0254360078652F /* CloudAIService.swift in Sources */,
-				60A704E22E0254360078652F /* JWTManager.swift in Sources */,
+				60A704E12E0254360078652F /* OnDeviceAIService.swift in Sources */,
 				60A704E32E0254360078652F /* Config.swift in Sources */,
 				60A704E42E0254360078652F /* Template.swift in Sources */,
 				60A704E52E0254360078652F /* ContentView.swift in Sources */,
@@ -523,7 +514,6 @@
 				60A704F32E0254360078652F /* AIServiceFactory.swift in Sources */,
 				60A704F42E0254360078652F /* RecordingManager.swift in Sources */,
 				60A704F52E0254360078652F /* ShareSheet.swift in Sources */,
-				60A704F62E0254360078652F /* NetworkManager.swift in Sources */,
 				60A704F82E0254360078652F /* AIService.swift in Sources */,
 				60A704FB2E0254360078652F /* Recording.swift in Sources */,
 				60A704FD2E0254360078652F /* AudioRecordingService.swift in Sources */,
