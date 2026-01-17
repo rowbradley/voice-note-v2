@@ -89,6 +89,32 @@ final class RecordingManager {
         self.modelContext = modelContext
         loadRecentRecordings()
     }
+
+    /// Prewarm transcription assets at app launch (non-blocking)
+    /// Downloads the on-device speech recognition model if needed
+    func prewarmTranscription() {
+        guard liveTranscriptionService.isAvailable else {
+            logger.info("🔥 Prewarm skipped: Live transcription not available")
+            return
+        }
+
+        guard !liveTranscriptionService.isModelDownloaded else {
+            logger.info("🔥 Prewarm skipped: Model already downloaded")
+            return
+        }
+
+        logger.info("🔥 Prewarming transcription assets...")
+
+        Task {
+            do {
+                try await liveTranscriptionService.ensureModelAvailable()
+                logger.info("🔥 Prewarm complete: Model ready")
+            } catch {
+                logger.warning("🔥 Prewarm failed (will retry on first recording): \(error)")
+                // Non-fatal: will retry when user starts recording
+            }
+        }
+    }
     
     func toggleRecording() async {
         logger.debug("Toggle recording called. Current state: \(String(describing: self.recordingState))")

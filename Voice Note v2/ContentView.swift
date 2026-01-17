@@ -515,6 +515,7 @@ struct ContentView: View {
         }
         .onAppear {
             recordingManager.configure(with: modelContext)
+            recordingManager.prewarmTranscription()  // Pre-download assets at launch
         }
         .onChange(of: recordingManager.lastRecordingId) { oldValue, newValue in
             if let recordingId = newValue,
