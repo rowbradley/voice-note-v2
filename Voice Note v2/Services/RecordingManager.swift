@@ -74,6 +74,49 @@ final class RecordingManager {
     
     private var modelContext: ModelContext?
     private let logger = Logger(subsystem: "com.voicenote", category: "RecordingManager")
+
+    // MARK: - Helper Methods (extracted to reduce duplication)
+
+    /// Saves audio file from temporary location to Documents directory
+    /// Returns the destination URL and generated filename
+    private func saveAudioFile(from sourceURL: URL) throws -> (destinationURL: URL, fileName: String) {
+        let fileName = "\(UUID().uuidString).m4a"
+        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let destinationURL = documentsDir.appendingPathComponent(fileName)
+
+        do {
+            try FileManager.default.moveItem(at: sourceURL, to: destinationURL)
+            logger.debug("Audio file saved to: \(destinationURL)")
+            return (destinationURL, fileName)
+        } catch {
+            logger.error("Failed to save audio file: \(error)")
+            throw error
+        }
+    }
+
+    /// Creates a Recording, saves it to SwiftData, and updates the UI
+    private func createAndSaveRecording(fileName: String, duration: TimeInterval) throws -> Recording {
+        let recording = Recording(
+            audioFileName: fileName,
+            duration: duration
+        )
+
+        modelContext?.insert(recording)
+        try modelContext?.save()
+
+        lastRecordingId = recording.id
+        loadRecentRecordings()
+        logger.info("Recording saved to database")
+
+        return recording
+    }
+
+    /// Clears the status text after a delay
+    private func clearStatusAfterDelay(_ delay: TimeInterval = 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            self.statusText = ""
+        }
+    }
     
     init() {
         // Set up AI service
@@ -228,30 +271,9 @@ final class RecordingManager {
             // Reset live transcription flag
             isUsingLiveTranscription = false
 
-            // Save audio file to Documents directory
-            let fileName = "\(UUID().uuidString).m4a"
-            let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let destinationURL = documentsDir.appendingPathComponent(fileName)
-
-            try FileManager.default.moveItem(at: audioURL, to: destinationURL)
-            logger.debug("Audio file saved to: \(destinationURL)")
-
-            // Create recording record
-            let recording = Recording(
-                audioFileName: fileName,
-                duration: duration
-            )
-
-            // Save to SwiftData
-            modelContext?.insert(recording)
-            try modelContext?.save()
-
-            // Set last recording ID
-            lastRecordingId = recording.id
-
-            // Reload recent recordings
-            loadRecentRecordings()
-            logger.info("Recording saved to database")
+            // Save audio file and create recording (using helper methods)
+            let (destinationURL, fileName) = try saveAudioFile(from: audioURL)
+            let recording = try createAndSaveRecording(fileName: fileName, duration: duration)
 
             // Reset state
             recordingState = .idle
@@ -266,10 +288,7 @@ final class RecordingManager {
                 )
             }
 
-            // Clear status after delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                self.statusText = ""
-            }
+            clearStatusAfterDelay()
 
         } catch {
             logger.error("Failed to stop live recording: \(error)")
@@ -344,37 +363,11 @@ final class RecordingManager {
     private func stopLegacyRecording() async {
         do {
             let (audioURL, duration) = try await audioRecordingService.stopRecording()
-
             logger.info("Recording stopped. Duration: \(duration)s, File: \(audioURL)")
 
-            // Save audio file to Documents directory
-            let fileName = "\(UUID().uuidString).m4a"
-            let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let destinationURL = documentsDir.appendingPathComponent(fileName)
-
-            do {
-                try FileManager.default.moveItem(at: audioURL, to: destinationURL)
-                logger.debug("Audio file saved to: \(destinationURL)")
-            } catch {
-                logger.error("Failed to save audio file: \(error)")
-                throw error
-            }
-
-            // Create recording record
-            let recording = Recording(
-                audioFileName: fileName,
-                duration: duration
-            )
-
-            // Save to SwiftData
-            modelContext?.insert(recording)
-            try modelContext?.save()
-
-            // Set last recording ID
-            lastRecordingId = recording.id
-
-            // Reload recent recordings
-            loadRecentRecordings()
+            // Save audio file and create recording (using helper methods)
+            let (destinationURL, fileName) = try saveAudioFile(from: audioURL)
+            let recording = try createAndSaveRecording(fileName: fileName, duration: duration)
             logger.info("Recording saved to database. Total recordings: \(self.recentRecordings.count)")
 
             // Reset state immediately - don't block UI
@@ -383,102 +376,82 @@ final class RecordingManager {
 
             // Start transcription in background (don't block UI)
             Task {
-                // Declare progressTask at function level for proper scope
-                var progressTask: Task<Void, Never>?
-
-                do {
-                    isTranscribing = true
-                    statusText = "Transcribing..."
-                    self.logger.debug("Starting transcription for file: \(destinationURL)")
-
-                    // Show progress updates with cancellable task
-                    progressTask = Task {
-                        for i in 1...6 {
-                            guard !Task.isCancelled else { break }
-                            try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
-                            if isTranscribing && !Task.isCancelled {
-                                await MainActor.run {
-                                    let messages = [
-                                        "Processing audio...",
-                                        "Still transcribing...",
-                                        "This may take a moment...",
-                                        "Almost there...",
-                                        "Finalizing transcript...",
-                                        "Taking longer than expected..."
-                                    ]
-                                    statusText = messages[min(i-1, messages.count-1)]
-                                }
-                            } else {
-                                break
-                            }
-                        }
-                    }
-
-                    let transcriptText = try await transcriptionService.transcribe(audioURL: destinationURL, progressCallback: nil)
-                    
-                    // Cancel progress updates task
-                    progressTask?.cancel()
-                    
-                    self.logger.info("Transcription completed. Length: \(transcriptText.count) chars")
-                    
-                    // The transcribe method handles transcription
-                    // Just use the result we got
-                    
-                    // Create transcript object
-                    self.logger.debug("Creating transcript. Length: \(transcriptText.count) chars")
-                    let transcript = Transcript(text: transcriptText)
-                    recording.transcript = transcript
-                    self.logger.debug("Assigned transcript to recording")
-
-                    // Generate title (synchronous - uses first line)
-                    self.generateTitle(for: transcript, from: transcriptText, recording: recording)
-                    
-                    // Save transcript
-                    try modelContext?.save()
-                    self.logger.debug("Saved transcript to database")
-                    
-                    // Verify it was saved
-                    if let savedTranscript = recording.transcript {
-                        self.logger.debug("Verified saved transcript. Length: \(savedTranscript.text.count) chars")
-                    } else {
-                        self.logger.error("Transcript not found after save!")
-                    }
-                    
-                    await MainActor.run {
-                        isTranscribing = false
-                        statusText = "Transcription complete!"
-                        loadRecentRecordings() // Refresh UI
-                        self.logger.debug("Recording transcript updated, reloading UI")
-                    }
-                } catch {
-                    // Cancel progress updates task
-                    progressTask?.cancel()
-                    
-                    await MainActor.run {
-                        isTranscribing = false
-                        statusText = "Transcription failed"
-                        self.logger.error("Transcription error: \(error)")
-                        
-                        // Show alert about failed transcription
-                        failedTranscriptionMessage = "Recording saved to Library. Transcription failed - recording may be too short or contain no audio."
-                        showFailedTranscriptionAlert = true
-                        
-                        // Remove from recent recordings to keep it clean
-                        if let index = recentRecordings.firstIndex(where: { $0.id == recording.id }) {
-                            recentRecordings.remove(at: index)
-                        }
-                    }
-                }
+                await transcribeLegacyRecording(recording, audioURL: destinationURL)
             }
-            
-            // Clear status after delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                self.statusText = ""
-            }
-            
+
+            clearStatusAfterDelay()
+
         } catch {
             recordingState = .idle
             statusText = "Failed to process recording: \(error.localizedDescription)"
+        }
+    }
+
+    /// Transcribes a legacy recording with progress updates
+    private func transcribeLegacyRecording(_ recording: Recording, audioURL: URL) async {
+        var progressTask: Task<Void, Never>?
+
+        do {
+            isTranscribing = true
+            statusText = "Transcribing..."
+            logger.debug("Starting transcription for file: \(audioURL)")
+
+            // Show progress updates with cancellable task
+            progressTask = Task {
+                let messages = [
+                    "Processing audio...",
+                    "Still transcribing...",
+                    "This may take a moment...",
+                    "Almost there...",
+                    "Finalizing transcript...",
+                    "Taking longer than expected..."
+                ]
+                for i in 1...6 {
+                    guard !Task.isCancelled else { break }
+                    try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+                    if isTranscribing && !Task.isCancelled {
+                        await MainActor.run {
+                            statusText = messages[min(i-1, messages.count-1)]
+                        }
+                    } else {
+                        break
+                    }
+                }
+            }
+
+            let transcriptText = try await transcriptionService.transcribe(audioURL: audioURL, progressCallback: nil)
+            progressTask?.cancel()
+            logger.info("Transcription completed. Length: \(transcriptText.count) chars")
+
+            // Create and save transcript
+            let transcript = Transcript(text: transcriptText)
+            recording.transcript = transcript
+            generateTitle(for: transcript, from: transcriptText, recording: recording)
+
+            try modelContext?.save()
+            logger.debug("Saved transcript to database")
+
+            await MainActor.run {
+                isTranscribing = false
+                statusText = "Transcription complete!"
+                loadRecentRecordings()
+            }
+
+        } catch {
+            progressTask?.cancel()
+
+            await MainActor.run {
+                isTranscribing = false
+                statusText = "Transcription failed"
+                logger.error("Transcription error: \(error)")
+
+                failedTranscriptionMessage = "Recording saved to Library. Transcription failed - recording may be too short or contain no audio."
+                showFailedTranscriptionAlert = true
+
+                if let index = recentRecordings.firstIndex(where: { $0.id == recording.id }) {
+                    recentRecordings.remove(at: index)
+                }
+            }
         }
     }
     
@@ -598,11 +571,8 @@ final class RecordingManager {
                 statusText = "Template applied!"
                 loadRecentRecordings()
             }
-            
-            // Clear status after delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                self.statusText = ""
-            }
+
+            clearStatusAfterDelay()
             
         } catch {
             await MainActor.run {
