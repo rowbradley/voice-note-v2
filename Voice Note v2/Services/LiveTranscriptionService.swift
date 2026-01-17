@@ -323,6 +323,11 @@ final class LiveTranscriptionService {
                     }
                 }
 
+                // Create synchronization for first buffer (Optimization 5 - replaces fixed 150ms delay)
+                // This ensures analyzeSequence() isn't called before buffers start flowing
+                let firstBufferSignal = AsyncStream<Void>.makeStream()
+                var firstBufferContinuation: AsyncStream<Void>.Continuation? = firstBufferSignal.1
+
                 // Feed audio buffers to analyzer
                 logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Spawning buffer feeding task")
                 Task {
@@ -354,9 +359,12 @@ final class LiveTranscriptionService {
                         continuation.yield(input)
                         bufferCount += 1
 
-                        // Log first buffer for debugging race condition fix
+                        // Signal first buffer arrival (Optimization 5)
                         if bufferCount == 1 {
-                            self.logger.info("🎤 First buffer fed to analyzer")
+                            self.logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] First buffer fed to analyzer - signaling ready")
+                            firstBufferContinuation?.yield()
+                            firstBufferContinuation?.finish()
+                            firstBufferContinuation = nil
                         }
 
                         // Log every 50 buffers to track progress
@@ -366,6 +374,8 @@ final class LiveTranscriptionService {
                     }
 
                     self.logger.info("🎤 Buffer stream ended after \(bufferCount) buffers")
+                    // Ensure signal is sent even if no buffers arrived (edge case)
+                    firstBufferContinuation?.finish()
                     continuation.finish()
                 }
 
@@ -411,11 +421,22 @@ final class LiveTranscriptionService {
                     }
                 }
 
-                // Wait briefly to let buffer task start receiving audio (fixes first-click race condition)
-                // Without this, analyzeSequence() may run before any buffers arrive
-                logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Waiting 150ms for buffer task to start...")
-                try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
-                logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Delay complete, starting analyzer")
+                // Wait for first buffer before starting analysis (Optimization 5 - replaces fixed 150ms delay)
+                // This is more robust - we start exactly when audio is flowing, not after arbitrary delay
+                logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Waiting for first buffer...")
+
+                // Wait for first buffer signal (stream finishes after first yield or if no buffers arrive)
+                var gotFirstBuffer = false
+                for await _ in firstBufferSignal.0 {
+                    gotFirstBuffer = true
+                    break
+                }
+
+                if gotFirstBuffer {
+                    logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] First buffer received, starting analyzer")
+                } else {
+                    logger.warning("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] No first buffer signal, starting analyzer anyway")
+                }
 
                 // Start analysis
                 let lastSampleTime = try await analyzer.analyzeSequence(inputSequence)
