@@ -51,6 +51,10 @@ final class LiveTranscriptionService {
     private var cachedAnalyzer: SpeechAnalyzer?
     private var isPrepared: Bool = false
 
+    // Cached audio format (Optimization 4)
+    // bestAvailableAudioFormat() result doesn't change per-device, so cache it
+    private var cachedTargetFormat: AVAudioFormat?
+
     // MARK: - Lifecycle
 
     init() {
@@ -191,10 +195,20 @@ final class LiveTranscriptionService {
             cachedAnalyzer = analyzer
             logger.info("🔥 SpeechAnalyzer created with processLifetime retention")
 
+            // Cache the best available audio format (Optimization 4)
+            // This negotiation takes ~100-300ms, so do it once at launch
+            // Pass nil for considering - we'll use this format for any input
+            if let targetFormat = try await SpeechAnalyzer.bestAvailableAudioFormat(
+                compatibleWith: [transcriber],
+                considering: nil
+            ) {
+                cachedTargetFormat = targetFormat
+                logger.info("🔥 Cached target format: \(targetFormat.sampleRate)Hz, \(targetFormat.commonFormat.rawValue)")
+            }
+
             // Preheat the analyzer with prepareToAnalyze(in:)
-            // Pass nil for format - analyzer will load assets and reconfigure when actual audio arrives
-            // This still provides significant startup delay reduction
-            try await analyzer.prepareToAnalyze(in: nil as AVAudioFormat?)
+            // Pass the cached format if available for optimal preheating
+            try await analyzer.prepareToAnalyze(in: cachedTargetFormat)
             logger.info("🔥 Analyzer preheated with prepareToAnalyze(in:)")
 
             isPrepared = true
@@ -206,6 +220,7 @@ final class LiveTranscriptionService {
             cachedTranscriber = nil
             cachedAnalyzer = nil
             cachedLocale = nil
+            cachedTargetFormat = nil
             isPrepared = false
         }
     }
@@ -265,15 +280,25 @@ final class LiveTranscriptionService {
 
                 // Get the best available audio format for SpeechAnalyzer
                 // SpeechAnalyzer does NOT perform audio conversion internally
-                logger.info("🎤 Getting best available audio format...")
-                guard let targetFormat = try await SpeechAnalyzer.bestAvailableAudioFormat(
-                    compatibleWith: [transcriber],
-                    considering: format
-                ) else {
-                    self.logger.error("🎤 No compatible audio format available")
-                    return
+                // Use cached format if available (Optimization 4 - saves ~100-300ms)
+                let targetFormat: AVAudioFormat
+                if let cached = self.cachedTargetFormat {
+                    targetFormat = cached
+                    logger.info("🎤 Using cached target format: \(targetFormat.sampleRate)Hz, \(targetFormat.commonFormat.rawValue)")
+                } else {
+                    logger.info("🎤 Getting best available audio format (no cache)...")
+                    guard let computed = try await SpeechAnalyzer.bestAvailableAudioFormat(
+                        compatibleWith: [transcriber],
+                        considering: format
+                    ) else {
+                        self.logger.error("🎤 No compatible audio format available")
+                        return
+                    }
+                    targetFormat = computed
+                    // Cache for future recordings
+                    self.cachedTargetFormat = computed
+                    logger.info("🎤 Computed and cached target format: \(targetFormat.sampleRate)Hz, \(targetFormat.commonFormat.rawValue)")
                 }
-                logger.info("🎤 Target format: \(targetFormat.sampleRate)Hz, \(targetFormat.commonFormat.rawValue)")
 
                 // Create converter if formats differ
                 let needsConversion = format.sampleRate != targetFormat.sampleRate ||
