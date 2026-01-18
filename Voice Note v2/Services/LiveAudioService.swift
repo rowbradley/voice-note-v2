@@ -3,7 +3,6 @@ import Foundation
 import Observation
 import os.log
 import Speech
-import CoreMedia
 
 /// Audio capture service using AVAudioEngine for live transcription
 /// Provides simultaneous buffer streaming and file recording
@@ -39,9 +38,8 @@ final class LiveAudioService {
     private var levelTimer: Timer?
     private var bufferContinuation: AsyncStream<(AVAudioPCMBuffer, AVAudioTime)>.Continuation?
 
-    // Voice detection thresholds
+    // Voice detection threshold
     private let voiceThreshold: Float = -40.0  // dB - more sensitive to quiet speech
-    private let silenceThreshold: Float = -55.0  // dB - background noise level
 
     // Interruption handling (for background recording)
     private var interruptionTask: Task<Void, Never>?
@@ -459,17 +457,11 @@ final class LiveAudioService {
 
 enum LiveAudioError: LocalizedError {
     case noActiveRecording
-    case failedToStart
-    case audioSessionError(Error)
 
     var errorDescription: String? {
         switch self {
         case .noActiveRecording:
             return "No active recording found"
-        case .failedToStart:
-            return "Failed to start audio recording"
-        case .audioSessionError(let error):
-            return "Audio session error: \(error.localizedDescription)"
         }
     }
 }

@@ -2,7 +2,6 @@ import Foundation
 import Speech
 import AVFoundation
 import os.log
-import CoreMedia
 
 /// File-based transcription service using iOS 26+ SpeechAnalyzer API
 /// For live transcription, use LiveTranscriptionService instead
@@ -202,9 +201,7 @@ class TranscriptionService {
 enum TranscriptionError: LocalizedError {
     case speechRecognitionUnavailable
     case recognitionFailed(Error)
-    case transcriptionTimeout
     case invalidResponse
-    case networkError(Error)
 
     var errorDescription: String? {
         switch self {
@@ -212,12 +209,8 @@ enum TranscriptionError: LocalizedError {
             return "Speech recognition is not available"
         case .recognitionFailed(let error):
             return "Recognition failed: \(error.localizedDescription)"
-        case .transcriptionTimeout:
-            return "Transcription timed out. Please try again."
         case .invalidResponse:
             return "Invalid response from transcription service"
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
         }
     }
 }

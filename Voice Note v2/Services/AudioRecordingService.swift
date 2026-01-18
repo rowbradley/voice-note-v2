@@ -17,9 +17,8 @@ final class AudioRecordingService {
     private var levelTimer: Timer?
     private let logger = Logger(subsystem: "com.voicenote", category: "AudioRecording")
     
-    // Voice detection thresholds (adjusted for better low-volume detection)
+    // Voice detection threshold (adjusted for better low-volume detection)
     private let voiceThreshold: Float = -40.0 // dB - more sensitive to quiet speech
-    private let silenceThreshold: Float = -55.0 // dB - background noise level
     
     
     var isRecording: Bool {
@@ -135,7 +134,6 @@ final class AudioRecordingService {
     }
     
     private func startLevelMonitoring() {
-        // Reduced frequency from 30Hz → 10Hz → 5Hz for optimal battery life
         // 5Hz provides smooth UI feedback while minimizing power consumption
         levelTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -229,16 +227,13 @@ final class AudioRecordingService {
 enum AudioRecordingError: LocalizedError {
     case failedToStartRecording
     case noActiveRecording
-    case audioSessionError(Error)
-    
+
     var errorDescription: String? {
         switch self {
         case .failedToStartRecording:
             return "Failed to start recording"
         case .noActiveRecording:
             return "No active recording found"
-        case .audioSessionError(let error):
-            return "Audio session error: \(error.localizedDescription)"
         }
     }
 }

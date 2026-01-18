@@ -24,7 +24,6 @@
 		60A704E92E0254360078652F /* TemplateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C12E0254360078652F /* TemplateManager.swift */; };
 		60A704EA2E0254360078652F /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C92E0254360078652F /* LibraryView.swift */; };
 		60A704ED2E0254360078652F /* RecordButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CB2E0254360078652F /* RecordButton.swift */; };
-		60A704EE2E0254360078652F /* NetworkMonitorProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BF2E0254360078652F /* NetworkMonitorProtocol.swift */; };
 		60A704EF2E0254360078652F /* RecentRecordingCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CA2E0254360078652F /* RecentRecordingCard.swift */; };
 		60A704F12E0254360078652F /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C42E0254360078652F /* AppCoordinator.swift */; };
 		60A704F22E0254360078652F /* MockAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BD2E0254360078652F /* MockAIService.swift */; };
@@ -84,7 +83,6 @@
 		60A704BA2E0254360078652F /* AudioRecordingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingService.swift; sourceTree = "<group>"; };
 		60A704BB2E0254360078652F /* OnDeviceAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceAIService.swift; sourceTree = "<group>"; };
 		60A704BD2E0254360078652F /* MockAIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockAIService.swift; sourceTree = "<group>"; };
-		60A704BF2E0254360078652F /* NetworkMonitorProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitorProtocol.swift; sourceTree = "<group>"; };
 		60A704C02E0254360078652F /* RecordingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingManager.swift; sourceTree = "<group>"; };
 		60A704C12E0254360078652F /* TemplateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateManager.swift; sourceTree = "<group>"; };
 		60A704C22E0254360078652F /* TranscriptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionService.swift; sourceTree = "<group>"; };
@@ -266,7 +264,6 @@
 				60A704B92E0254360078652F /* AudioPlaybackManager.swift */,
 				60A704BA2E0254360078652F /* AudioRecordingService.swift */,
 				60A704BD2E0254360078652F /* MockAIService.swift */,
-				60A704BF2E0254360078652F /* NetworkMonitorProtocol.swift */,
 				60A704BB2E0254360078652F /* OnDeviceAIService.swift */,
 				60A704C02E0254360078652F /* RecordingManager.swift */,
 				60A704C12E0254360078652F /* TemplateManager.swift */,
@@ -520,7 +517,6 @@
 				60A704E92E0254360078652F /* TemplateManager.swift in Sources */,
 				60A704EA2E0254360078652F /* LibraryView.swift in Sources */,
 				60A704ED2E0254360078652F /* RecordButton.swift in Sources */,
-				60A704EE2E0254360078652F /* NetworkMonitorProtocol.swift in Sources */,
 				60A704EF2E0254360078652F /* RecentRecordingCard.swift in Sources */,
 				60A704F12E0254360078652F /* AppCoordinator.swift in Sources */,
 				60A704F22E0254360078652F /* MockAIService.swift in Sources */,
