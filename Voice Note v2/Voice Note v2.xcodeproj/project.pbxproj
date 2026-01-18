@@ -69,7 +69,6 @@
 /* Begin PBXFileReference section */
 		321A91BD742ABFB91D345D63 /* AudioFormatConverterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioFormatConverterTests.swift; path = Tests/AudioFormatConverterTests.swift; sourceTree = "<group>"; };
 		5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptionService.swift; path = ../Services/LiveTranscriptionService.swift; sourceTree = "<group>"; };
-		603E5AF12E03CCBE0066FA8B /* SpeechTranscribing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechTranscribing.swift; sourceTree = "<group>"; };
 		603E5B342E05F9530066FA8B /* EnhancedMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedMarkdownView.swift; sourceTree = "<group>"; };
 		60A704702E0250F00078652F /* Voice Note v2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Voice Note v2.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		60A7047D2E0250F20078652F /* Voice Note v2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Voice Note v2Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -262,7 +261,6 @@
 		60A704C32E0254360078652F /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				603E5AF12E03CCBE0066FA8B /* SpeechTranscribing.swift */,
 				60A704B72E0254360078652F /* AIService.swift */,
 				60A704B82E0254360078652F /* AIServiceFactory.swift */,
 				60A704B92E0254360078652F /* AudioPlaybackManager.swift */,
