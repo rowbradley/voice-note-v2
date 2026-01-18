@@ -2,7 +2,6 @@ import Foundation
 import Speech
 import AVFoundation
 import os.log
-import CoreMedia
 
 /// Live transcription service using iOS 26+ SpeechAnalyzer API
 /// Provides real-time transcription with volatile results that refine to finalized text
@@ -94,36 +93,31 @@ final class LiveTranscriptionService {
 
     /// Check if the on-device model is already downloaded
     private func checkModelStatus() async {
-        do {
-            // Check if model supports current locale
-            guard let locale = await getSupportedLocale() else {
-                logger.warning("No supported locale found")
-                isModelDownloaded = false
-                return
-            }
+        // Check if model supports current locale
+        guard let locale = await getSupportedLocale() else {
+            logger.warning("No supported locale found")
+            isModelDownloaded = false
+            return
+        }
 
-            // Create a transcriber to check status
-            let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
-            let status = await AssetInventory.status(forModules: [transcriber])
+        // Create a transcriber to check status
+        let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+        let status = await AssetInventory.status(forModules: [transcriber])
 
-            switch status {
-            case .installed:
-                isModelDownloaded = true
-                downloadProgress = 1.0
-                logger.info("On-device transcription model is installed for locale: \(locale.identifier)")
-            case .supported, .downloading:
-                isModelDownloaded = false
-                downloadProgress = status == .downloading ? 0.5 : 0.0
-                logger.info("On-device transcription model status: \(String(describing: status))")
-            case .unsupported:
-                isModelDownloaded = false
-                downloadProgress = 0.0
-                logger.warning("On-device transcription model is unsupported for locale: \(locale.identifier)")
-            @unknown default:
-                isModelDownloaded = false
-            }
-        } catch {
-            logger.error("Failed to check model status: \(error)")
+        switch status {
+        case .installed:
+            isModelDownloaded = true
+            downloadProgress = 1.0
+            logger.info("On-device transcription model is installed for locale: \(locale.identifier)")
+        case .supported, .downloading:
+            isModelDownloaded = false
+            downloadProgress = status == .downloading ? 0.5 : 0.0
+            logger.info("On-device transcription model status: \(String(describing: status))")
+        case .unsupported:
+            isModelDownloaded = false
+            downloadProgress = 0.0
+            logger.warning("On-device transcription model is unsupported for locale: \(locale.identifier)")
+        @unknown default:
             isModelDownloaded = false
         }
     }
@@ -217,7 +211,7 @@ final class LiveTranscriptionService {
             // Cache the best available audio format (Optimization 4)
             // This negotiation takes ~100-300ms, so do it once at launch
             // Pass nil for considering - we'll use this format for any input
-            if let targetFormat = try await SpeechAnalyzer.bestAvailableAudioFormat(
+            if let targetFormat = await SpeechAnalyzer.bestAvailableAudioFormat(
                 compatibleWith: [transcriber],
                 considering: nil
             ) {
@@ -306,7 +300,7 @@ final class LiveTranscriptionService {
                     logger.info("🎤 Using cached target format: \(targetFormat.sampleRate)Hz, \(targetFormat.commonFormat.rawValue)")
                 } else {
                     logger.info("🎤 Getting best available audio format (no cache)...")
-                    guard let computed = try await SpeechAnalyzer.bestAvailableAudioFormat(
+                    guard let computed = await SpeechAnalyzer.bestAvailableAudioFormat(
                         compatibleWith: [transcriber],
                         considering: format
                     ) else {
@@ -488,16 +482,8 @@ final class LiveTranscriptionService {
         }
         inputContinuationStorage = nil
 
-        // Wait for transcription task to complete (with timeout)
-        let timeoutTask = Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000)  // 2 second timeout
-        }
-
-        _ = await Task {
-            await transcriptionTask?.value
-        }.result
-
-        timeoutTask.cancel()
+        // Wait for transcription task to complete (give it time to finalize)
+        await transcriptionTask?.value
         transcriptionTask = nil
 
         isTranscribing = false
@@ -541,7 +527,6 @@ enum LiveTranscriptionError: LocalizedError {
     case unavailable
     case localeNotSupported
     case downloadFailed
-    case notReady
 
     var errorDescription: String? {
         switch self {
@@ -551,8 +536,6 @@ enum LiveTranscriptionError: LocalizedError {
             return "Your language is not supported for on-device transcription"
         case .downloadFailed:
             return "Failed to download the transcription model"
-        case .notReady:
-            return "Transcription service is not ready"
         }
     }
 }
