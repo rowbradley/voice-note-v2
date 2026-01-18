@@ -6,6 +6,12 @@ import os.log
 actor OnDeviceAIService: AIService {
     private let logger = Logger(subsystem: "com.voicenote", category: "OnDeviceAIService")
 
+    // Universal prefix for all template prompts - handles transcript quality issues
+    private let transcriptQualityNote = """
+        Note: This is an automated transcript. Interpret meaning contextually,
+        not literally. Fix obvious errors silently while preserving intent.
+        """
+
     // MARK: - Availability State
 
     enum AvailabilityState: Sendable {
@@ -167,7 +173,9 @@ actor OnDeviceAIService: AIService {
 
     private func processSingleChunk(_ chunk: String, templateInfo: TemplateInfo, previousContext: String?) async throws -> String {
         // New session per chunk (Apple's recommendation)
-        let session = LanguageModelSession(instructions: templateInfo.prompt)
+        // Prepend universal transcript quality note to all prompts
+        let instructions = transcriptQualityNote + "\n\n" + templateInfo.prompt
+        let session = LanguageModelSession(instructions: instructions)
 
         let prompt: String
         if let context = previousContext {
