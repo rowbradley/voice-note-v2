@@ -35,11 +35,15 @@ final class LiveAudioService {
     private var audioEngine: AVAudioEngine?
     private var audioFile: AVAudioFile?
     private var recordingStartTime: Date?
-    private var levelTimer: Timer?
+    private var durationTimer: Timer?
     private var bufferContinuation: AsyncStream<(AVAudioPCMBuffer, AVAudioTime)>.Continuation?
 
-    // Voice detection threshold
-    private let voiceThreshold: Float = -40.0  // dB - more sensitive to quiet speech
+    // Voice detection threshold (see AudioConstants for tuning guidance)
+    private let voiceThreshold: Float = AudioConstants.voiceThreshold
+
+    // UI update throttling to prevent MainActor crossing overhead
+    // Frame rate read from AppSettings.shared.frameRateCFInterval (30 or 60fps)
+    private var lastUIUpdate: CFAbsoluteTime = 0
 
     // Interruption handling (for background recording)
     private var interruptionTask: Task<Void, Never>?
@@ -51,9 +55,9 @@ final class LiveAudioService {
         logger.debug("LiveAudioService initialized")
     }
 
-    deinit {
-        // Cleanup is handled by stopRecording
-    }
+    // Note: Timer cleanup happens in stopDurationTimer() called from stopRecording()/cancelRecording()
+    // Continuation is finished in stopRecording()/cancelRecording()
+    // When object is deallocated, references are dropped automatically
 
     // MARK: - Public Methods
 
@@ -126,15 +130,37 @@ final class LiveAudioService {
             // Yield to stream for transcription (include timestamp!)
             self.bufferContinuation?.yield((buffer, time))
 
-            // Calculate audio level (on main actor)
-            Task { @MainActor in
-                self.updateAudioLevel(from: buffer)
+            // Throttle UI updates based on Low Power Mode setting
+            // Standard: 60fps, Low Power: 30fps
+            // Buffers arrive at ~43/sec (1024 samples @ 44.1kHz)
+            let now = CFAbsoluteTimeGetCurrent()
+            let interval = AppSettings.shared.frameRateCFInterval
+            if now - self.lastUIUpdate >= interval {
+                self.lastUIUpdate = now
+                Task { @MainActor in
+                    self.updateAudioLevel(from: buffer)
+                }
             }
         }
 
-        // Start engine
+        // Start engine - finish continuation if this fails to prevent memory leak
         engine.prepare()
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            // Cleanup continuation to prevent leak
+            bufferContinuation?.finish()
+            bufferContinuation = nil
+
+            // Remove observer we added earlier
+            NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
+            stopInterruptionMonitoring()
+
+            // Deactivate audio session
+            try? AVAudioSession.sharedInstance().setActive(false)
+
+            throw error
+        }
 
         recordingStartTime = Date()
         isRecording = true
@@ -172,8 +198,8 @@ final class LiveAudioService {
         var stableCount = 0
 
         logger.debug("Waiting for audio file to stabilize...")
-        for _ in 0..<20 {  // Max 2 seconds
-            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+        for _ in 0..<AudioConstants.FileStabilization.maxAttempts {
+            try await Task.sleep(nanoseconds: AudioConstants.FileStabilization.pollInterval)
 
             guard let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
                   let currentSize = attributes[.size] as? UInt64 else {
@@ -182,7 +208,7 @@ final class LiveAudioService {
 
             if currentSize > 0 && currentSize == lastSize {
                 stableCount += 1
-                if stableCount >= 2 {  // Stable for 200ms
+                if stableCount >= AudioConstants.FileStabilization.stableThreshold {
                     logger.debug("Audio file stabilized at \(currentSize) bytes")
                     break
                 }
@@ -265,6 +291,36 @@ final class LiveAudioService {
         try? AVAudioSession.sharedInstance().setActive(false)
     }
 
+    /// Pre-warm audio hardware at app launch to prevent first-recording failure.
+    /// Apple docs: "Check the input node's input format for a nonzero sample rate
+    /// and channel count to see if input is in an enabled state."
+    func prewarmAudioSystem() async throws {
+        logger.debug("Pre-warming audio system...")
+
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .default,
+                                options: [.defaultToSpeaker, .allowBluetoothHFP])
+        try session.setActive(true)
+
+        // Force hardware singleton creation
+        let engine = AVAudioEngine()
+        let format = engine.inputNode.outputFormat(forBus: 0)
+
+        // Validate hardware is ready (per Apple docs)
+        guard format.sampleRate > 0 && format.channelCount > 0 else {
+            logger.warning("Audio hardware not ready: \(format.sampleRate)Hz, \(format.channelCount) channels")
+            try session.setActive(false)
+            throw LiveAudioError.audioSystemNotReady
+        }
+
+        // Preallocate resources (Apple: "to responsively start audio")
+        engine.prepare()
+        engine.stop()
+
+        // Leave session active — hardware stays warm for first recording
+        logger.info("Audio system pre-warmed: \(format.sampleRate)Hz, \(format.channelCount) channels")
+    }
+
     // MARK: - Private Methods
 
     private var currentRecordingDuration: TimeInterval {
@@ -292,7 +348,7 @@ final class LiveAudioService {
 
     private func startDurationTimer() {
         // Update duration every 0.2 seconds
-        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.currentDuration = self?.currentRecordingDuration ?? 0
             }
@@ -300,8 +356,8 @@ final class LiveAudioService {
     }
 
     private func stopDurationTimer() {
-        levelTimer?.invalidate()
-        levelTimer = nil
+        durationTimer?.invalidate()
+        durationTimer = nil
     }
 
     private func updateAudioLevel(from buffer: AVAudioPCMBuffer) {
@@ -457,11 +513,14 @@ final class LiveAudioService {
 
 enum LiveAudioError: LocalizedError {
     case noActiveRecording
+    case audioSystemNotReady
 
     var errorDescription: String? {
         switch self {
         case .noActiveRecording:
             return "No active recording found"
+        case .audioSystemNotReady:
+            return "Audio hardware not ready"
         }
     }
 }

@@ -41,27 +41,12 @@ final class LiveTranscriptionService {
     private let logger = Logger(subsystem: "com.voicenote", category: "LiveTranscription")
     private var transcriptionTask: Task<Void, Never>?
 
-    // MARK: - Type-Erased Continuation Storage
-    //
-    // Why `Any?` instead of `AsyncStream<AnalyzerInput>.Continuation?`:
-    //
-    // The `AnalyzerInput` type is part of the Speech framework's SpeechAnalyzer API
-    // and is only available within async method bodies where SpeechAnalyzer is used.
-    // Attempting to declare a property as `AsyncStream<AnalyzerInput>.Continuation?`
-    // at the class level would require importing the continuation's generic type
-    // parameter into the class scope, which can cause compilation issues with
-    // module boundaries and incremental builds.
-    //
-    // The `Any` type erasure pattern allows us to:
-    // 1. Store the continuation without exposing AnalyzerInput at the class level
-    // 2. Cast back to the specific type when needed (stopTranscribing, reset)
-    // 3. Avoid complex type erasure wrappers for a simple store-and-retrieve case
-    //
-    // Usage:
-    //   Store:   self.inputContinuationStorage = continuation
-    //   Retrieve: if let c = inputContinuationStorage as? AsyncStream<AnalyzerInput>.Continuation { ... }
-    //
-    private var inputContinuationStorage: Any?
+    // Child task tracking for proper cancellation
+    private var bufferTask: Task<Void, Never>?
+    private var resultsTask: Task<Void, Never>?
+
+    // AnalyzerInput is a public Sendable struct - no type erasure needed
+    private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
 
     // Pre-warmed analyzer components (Optimization 2)
     private var cachedLocale: Locale?
@@ -72,6 +57,21 @@ final class LiveTranscriptionService {
     // Cached audio format (Optimization 4)
     // bestAvailableAudioFormat() result doesn't change per-device, so cache it
     private var cachedTargetFormat: AVAudioFormat?
+
+    // MARK: - Cache Management
+
+    /// Invalidate cached analyzer components. Called after stopTranscribing() and on errors.
+    /// Apple docs: SpeechAnalyzer enters "finished" state after analyzeSequence() and can't be reused.
+    /// - Parameter clearFormatCache: If true, also clears cachedTargetFormat (for full reset only)
+    private func invalidateCachedComponents(clearFormatCache: Bool = false) {
+        cachedTranscriber = nil
+        cachedAnalyzer = nil
+        cachedLocale = nil
+        if clearFormatCache {
+            cachedTargetFormat = nil
+        }
+        isPrepared = false
+    }
 
     // MARK: - Lifecycle
 
@@ -176,6 +176,11 @@ final class LiveTranscriptionService {
             return
         }
 
+        // Model status check might not be complete yet (init fires it async)
+        // Verify now to avoid race condition
+        if !isModelDownloaded {
+            await checkModelStatus()
+        }
         guard isModelDownloaded else {
             logger.info("🔥 prepareAnalyzer skipped: model not downloaded yet")
             return
@@ -230,11 +235,7 @@ final class LiveTranscriptionService {
         } catch {
             logger.warning("🔥 prepareAnalyzer failed (will create fresh on recording): \(error)")
             // Non-fatal: will create fresh analyzer when recording starts
-            cachedTranscriber = nil
-            cachedAnalyzer = nil
-            cachedLocale = nil
-            cachedTargetFormat = nil
-            isPrepared = false
+            invalidateCachedComponents(clearFormatCache: true)
         }
     }
 
@@ -289,7 +290,14 @@ final class LiveTranscriptionService {
             do {
                 // Create input sequence
                 let (inputSequence, continuation) = AsyncStream<AnalyzerInput>.makeStream()
-                self.inputContinuationStorage = continuation
+                self.inputContinuation = continuation
+
+                // Handle stream termination for cleanup
+                continuation.onTermination = { @Sendable [weak self] _ in
+                    Task { @MainActor in
+                        self?.logger.debug("AnalyzerInput stream terminated")
+                    }
+                }
 
                 // Get the best available audio format for SpeechAnalyzer
                 // SpeechAnalyzer does NOT perform audio conversion internally
@@ -305,6 +313,9 @@ final class LiveTranscriptionService {
                         considering: format
                     ) else {
                         self.logger.error("🎤 No compatible audio format available")
+                        // Finish continuation to prevent memory leak
+                        continuation.finish()
+                        self.inputContinuation = nil
                         return
                     }
                     targetFormat = computed
@@ -343,7 +354,7 @@ final class LiveTranscriptionService {
 
                 // Feed audio buffers to analyzer
                 logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Spawning buffer feeding task")
-                Task {
+                self.bufferTask = Task {
                     self.logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Buffer feeding task STARTED")
                     var bufferCount = 0
 
@@ -394,7 +405,7 @@ final class LiveTranscriptionService {
 
                 // Consume transcription results
                 logger.info("🎤 [T+\(String(format: "%.3f", CFAbsoluteTimeGetCurrent() - startTime))] Spawning results consuming task")
-                Task {
+                self.resultsTask = Task {
                     do {
                         var accumulatedText = ""
                         var resultCount = 0
@@ -476,15 +487,19 @@ final class LiveTranscriptionService {
     func stopTranscribing() async -> String {
         logger.info("Stopping live transcription...")
 
-        // Signal end of input - cast from Any storage
-        if let continuation = inputContinuationStorage as? AsyncStream<AnalyzerInput>.Continuation {
-            continuation.finish()
-        }
-        inputContinuationStorage = nil
+        // Signal end of input
+        inputContinuation?.finish()
+        inputContinuation = nil
 
         // Wait for transcription task to complete (give it time to finalize)
         await transcriptionTask?.value
         transcriptionTask = nil
+
+        // Cancel and clear child tasks
+        bufferTask?.cancel()
+        resultsTask?.cancel()
+        bufferTask = nil
+        resultsTask = nil
 
         isTranscribing = false
 
@@ -495,6 +510,10 @@ final class LiveTranscriptionService {
 
         logger.info("Final transcript: \(finalTranscript.count) characters")
 
+        // Invalidate analyzer cache - Apple docs: SpeechAnalyzer can't be reused after analyzeSequence()
+        // Keep cachedLocale and cachedTargetFormat since those are still valid
+        invalidateCachedComponents(clearFormatCache: false)
+
         return finalTranscript
     }
 
@@ -503,17 +522,18 @@ final class LiveTranscriptionService {
         transcriptionTask?.cancel()
         transcriptionTask = nil
 
-        if let continuation = inputContinuationStorage as? AsyncStream<AnalyzerInput>.Continuation {
-            continuation.finish()
-        }
-        inputContinuationStorage = nil
+        // Cancel and clear child tasks
+        bufferTask?.cancel()
+        resultsTask?.cancel()
+        bufferTask = nil
+        resultsTask = nil
 
-        // Invalidate cached components (analyzer may not be reusable after analyzeSequence)
+        inputContinuation?.finish()
+        inputContinuation = nil
+
+        // Invalidate cached components with full format cache clear
         // The underlying model stays in memory via ModelRetention (Optimization 3)
-        cachedTranscriber = nil
-        cachedAnalyzer = nil
-        cachedLocale = nil
-        isPrepared = false
+        invalidateCachedComponents(clearFormatCache: true)
 
         volatileText = ""
         finalizedText = ""
