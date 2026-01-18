@@ -13,14 +13,16 @@ struct LibraryView: View {
     var recordingManager: RecordingManager
     var showsDismissButton: Bool = true  // Set false when used in tab navigation
     @State private var searchText = ""
-    
+    @State private var debouncedSearchText = ""
+    @State private var searchDebounceTask: Task<Void, Never>?
+
     var filteredRecordings: [Recording] {
-        if searchText.isEmpty {
+        if debouncedSearchText.isEmpty {
             return recordingManager.recentRecordings
         } else {
             return recordingManager.recentRecordings.filter { recording in
-                recording.title.localizedCaseInsensitiveContains(searchText) ||
-                recording.transcript?.text.localizedCaseInsensitiveContains(searchText) == true
+                recording.title.localizedCaseInsensitiveContains(debouncedSearchText) ||
+                recording.transcript?.text.localizedCaseInsensitiveContains(debouncedSearchText) == true
             }
         }
     }
@@ -28,12 +30,12 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if recordingManager.recentRecordings.isEmpty && searchText.isEmpty {
+                if recordingManager.recentRecordings.isEmpty && debouncedSearchText.isEmpty {
                     // Empty state
                     EmptyLibraryView()
-                } else if filteredRecordings.isEmpty && !searchText.isEmpty {
-                    // No search results
-                    NoSearchResultsView(searchText: searchText)
+                } else if filteredRecordings.isEmpty && !debouncedSearchText.isEmpty {
+                    // No search results (use searchText for display, debouncedSearchText for filter)
+                    NoSearchResultsView(searchText: debouncedSearchText)
                 } else {
                     // Recordings list
                     List(filteredRecordings) { recording in
@@ -46,6 +48,15 @@ struct LibraryView: View {
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "Search recordings")
+            .onChange(of: searchText) { _, newValue in
+                // Debounce search to reduce filtering overhead on rapid typing
+                searchDebounceTask?.cancel()
+                searchDebounceTask = Task {
+                    try? await Task.sleep(nanoseconds: AudioConstants.Debounce.search)
+                    guard !Task.isCancelled else { return }
+                    debouncedSearchText = newValue
+                }
+            }
             .toolbar {
                 if showsDismissButton {
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -116,7 +127,7 @@ struct NoSearchResultsView: View {
             Text("No results found")
                 .font(.system(.title2, design: .rounded, weight: .semibold))
             
-            Text("Try a different search term")
+            Text("No matches for \"\(searchText)\"")
                 .font(.system(.body, design: .rounded))
                 .foregroundColor(.secondary)
         }

@@ -30,7 +30,8 @@ struct RecordingDetailView: View {
 
     // Cached share content for performance (ShareLink accesses item multiple times)
     @State private var cachedShareContent: String = ""
-    
+    @State private var shareContentDebounceTask: Task<Void, Never>?
+
     private let logger = Logger(subsystem: "com.voicenote", category: "RecordingDetailView")
     
     // Computed property for this recording's processed notes
@@ -154,9 +155,16 @@ struct RecordingDetailView: View {
             playbackManager.stopPlayback()
         }
         .onChange(of: recording.transcript?.text) { _, _ in
-            updateShareContent()
+            // Debounce share content updates to reduce overhead on rapid transcript changes
+            shareContentDebounceTask?.cancel()
+            shareContentDebounceTask = Task {
+                try? await Task.sleep(nanoseconds: AudioConstants.Debounce.shareContent)
+                guard !Task.isCancelled else { return }
+                updateShareContent()
+            }
         }
         .onChange(of: recordingNotes.count) { _, _ in
+            // Notes count changes less frequently, update immediately
             updateShareContent()
         }
         .sheet(isPresented: $showingTemplatePicker) {

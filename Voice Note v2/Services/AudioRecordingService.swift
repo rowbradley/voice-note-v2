@@ -3,6 +3,35 @@ import Foundation
 import Observation
 import os.log
 
+/// Legacy audio recording service using AVAudioRecorder.
+///
+/// ## Deprecation Notice
+///
+/// This service is deprecated as of iOS 26. Use `LiveAudioService` for new development.
+///
+/// This service remains available as a fallback for edge cases where live transcription
+/// is unavailable:
+/// - Speech recognition permissions denied
+/// - Siri/Dictation disabled in Settings
+/// - SpeechAnalyzer initialization failure
+///
+/// ## Technical Background
+///
+/// **AVAudioRecorder** (this service):
+/// - Simple API for recording to file
+/// - Cannot stream audio buffers in real-time
+/// - No access to raw PCM data during recording
+///
+/// **AVAudioEngine** (LiveAudioService):
+/// - Graph-based audio processing
+/// - Real-time buffer access via installTap()
+/// - Required for live transcription (streaming to SpeechAnalyzer)
+///
+/// Per Apple documentation: "For more advanced recording capabilities, like applying
+/// signal processing to recorded audio, use AVAudioEngine instead."
+///
+/// - SeeAlso: `LiveAudioService` for the primary recording implementation
+@available(iOS, deprecated: 26.0, message: "Use LiveAudioService for new development. This is fallback only.")
 @MainActor
 @Observable
 final class AudioRecordingService {
@@ -17,10 +46,12 @@ final class AudioRecordingService {
     private var levelTimer: Timer?
     private let logger = Logger(subsystem: "com.voicenote", category: "AudioRecording")
     
-    // Voice detection threshold (adjusted for better low-volume detection)
-    private let voiceThreshold: Float = -40.0 // dB - more sensitive to quiet speech
-    
-    
+    // Voice detection threshold (see AudioConstants for tuning guidance)
+    private let voiceThreshold: Float = AudioConstants.voiceThreshold
+
+    // Note: Timer cleanup happens in stopLevelMonitoring() called from stopRecording()
+    // When object is deallocated, Timer reference is dropped automatically
+
     var isRecording: Bool {
         audioRecorder?.isRecording ?? false
     }
@@ -53,9 +84,12 @@ final class AudioRecordingService {
         
         // Start recording
         guard audioRecorder?.record() == true else {
+            // Cleanup observer we added earlier to prevent leak
+            NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
+            try? recordingSession.setActive(false)
             throw AudioRecordingError.failedToStartRecording
         }
-        
+
         recordingStartTime = Date()
         startLevelMonitoring()
     }
@@ -76,15 +110,15 @@ final class AudioRecordingService {
         var lastSize: UInt64 = 0
         var stableCount = 0
 
-        for _ in 0..<20 {  // Max 2 seconds
-            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+        for _ in 0..<AudioConstants.FileStabilization.maxAttempts {
+            try await Task.sleep(nanoseconds: AudioConstants.FileStabilization.pollInterval)
 
             let attributes = try FileManager.default.attributesOfItem(atPath: recordingURL.path)
             let currentSize = attributes[.size] as? UInt64 ?? 0
 
             if currentSize > 0 && currentSize == lastSize {
                 stableCount += 1
-                if stableCount >= 2 { break }  // Stable for 200ms
+                if stableCount >= AudioConstants.FileStabilization.stableThreshold { break }
             } else {
                 stableCount = 0
             }

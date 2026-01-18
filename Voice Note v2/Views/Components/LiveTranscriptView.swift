@@ -8,6 +8,7 @@ struct LiveTranscriptView: View {
     let duration: TimeInterval
 
     @State private var isPulsing = false
+    @State private var scrollDebounceTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,8 +42,14 @@ struct LiveTranscriptView: View {
                     .padding(Spacing.md)
                 }
                 .onChange(of: transcript) { _, _ in
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        proxy.scrollTo("bottom", anchor: .bottom)
+                    // Debounce scroll to reduce animation overhead during rapid transcript updates
+                    scrollDebounceTask?.cancel()
+                    scrollDebounceTask = Task {
+                        try? await Task.sleep(nanoseconds: AudioConstants.Debounce.scroll)
+                        guard !Task.isCancelled else { return }
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            proxy.scrollTo("bottom", anchor: .bottom)
+                        }
                     }
                 }
             }
@@ -60,14 +67,10 @@ struct LiveTranscriptView: View {
                     Color.black  // Fully visible below gradient
                 }
             )
-            .debugBorder(.green)
-            .debugSize("TranscriptScrollArea")
 
             // Bottom bar with recording indicator and duration (only during recording)
             if isRecording {
                 recordingStatusBar
-                    .debugBorder(.orange)
-                    .debugSize("StatusBar")
             }
         }
         .background(Color(.systemBackground))
@@ -77,8 +80,6 @@ struct LiveTranscriptView: View {
                 .stroke(isRecording ? Color.red : Color(.systemGray4), lineWidth: isRecording ? 2 : 1)
                 .opacity(isRecording ? (isPulsing ? 0.4 : 0.8) : 1.0)
         )
-        .debugBorder(.purple)
-        .debugSize("LiveTranscriptView")
         .onAppear {
             if isRecording {
                 startPulsing()
@@ -172,8 +173,6 @@ struct LiveRecordingControlsView: View {
             // Audio level visualization
             AudioLevelBar(level: audioLevel, isVoiceDetected: isVoiceDetected)
                 .frame(height: ComponentSize.minTouchTarget)
-                .debugBorder(.cyan)
-                .debugSize("AudioLevelBar")
 
             Spacer()
 
@@ -191,8 +190,6 @@ struct LiveRecordingControlsView: View {
                 }
             }
             .buttonStyle(PlainButtonStyle())
-            .debugBorder(.yellow)
-            .debugSize("StopButton")
 
             Text("Tap to stop")
                 .font(.system(.caption, design: .rounded))
@@ -201,54 +198,64 @@ struct LiveRecordingControlsView: View {
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.md)
-        .debugBorder(.blue)
-        .debugSize("LiveRecordingControlsView")
     }
 }
 
-/// Simple horizontal audio level bar
+/// High-performance horizontal audio level bar using TimelineView + Canvas.
+///
+/// Responds to Low Power Mode:
+/// - Standard: 60fps, 20 bars
+/// - Low Power: 30fps, 12 bars
 struct AudioLevelBar: View {
+    /// Current audio level (0.0 to 1.0)
     let level: Float
+
+    /// Whether voice is currently detected (affects color)
     let isVoiceDetected: Bool
 
-    private let barCount = 20
-    private let spacing: CGFloat = 3
+    /// App settings for frame rate and bar count
+    @Environment(\.appSettings) private var appSettings
 
     var body: some View {
-        GeometryReader { geometry in
-            HStack(spacing: spacing) {
-                ForEach(0..<barCount, id: \.self) { index in
+        let interval = appSettings.frameRateInterval
+        let barCount = appSettings.levelBarCount
+        let spacing = AudioConstants.LevelBar.barSpacing
+
+        TimelineView(.animation(minimumInterval: interval)) { _ in
+            Canvas { context, size in
+                let totalSpacing = spacing * CGFloat(barCount - 1)
+                let barWidth = (size.width - totalSpacing) / CGFloat(barCount)
+
+                for index in 0..<barCount {
+                    let x = CGFloat(index) * (barWidth + spacing)
                     let threshold = Float(index) / Float(barCount)
                     let isActive = level > threshold
 
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(barColor(for: index, isActive: isActive))
-                        .frame(width: barWidth(geometry: geometry))
-                        .scaleEffect(y: isActive ? 1.0 : 0.3, anchor: .bottom)
-                        .animation(.easeOut(duration: 0.1), value: level)
+                    let barHeight = isActive ? size.height : size.height * 0.3
+                    let y = size.height - barHeight
+
+                    let rect = CGRect(x: x, y: y, width: barWidth, height: barHeight)
+                    let path = Path(roundedRect: rect, cornerRadius: 2)
+                    context.fill(path, with: .color(barColor(for: index, isActive: isActive, barCount: barCount)))
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .drawingGroup()
         }
     }
 
-    private func barWidth(geometry: GeometryProxy) -> CGFloat {
-        let totalSpacing = spacing * CGFloat(barCount - 1)
-        return (geometry.size.width - totalSpacing) / CGFloat(barCount)
-    }
-
-    private func barColor(for index: Int, isActive: Bool) -> Color {
+    private func barColor(for index: Int, isActive: Bool, barCount: Int) -> Color {
         if !isActive {
             return Color.gray.opacity(0.3)
         }
 
         let position = Float(index) / Float(barCount)
-        if position > 0.8 {
-            return .red  // High levels
-        } else if position > 0.5 {
-            return .yellow  // Medium levels
+        if position > AudioConstants.LevelThreshold.high {
+            return .red
+        } else if position > AudioConstants.LevelThreshold.medium {
+            return .yellow
         } else {
-            return isVoiceDetected ? .green : .blue  // Normal levels
+            // Green when voice detected, blue otherwise
+            return isVoiceDetected ? .green : .blue
         }
     }
 }

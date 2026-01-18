@@ -38,12 +38,31 @@ final class RecordingManager {
     private(set) var isUsingLiveTranscription: Bool = false
 
     // MARK: - Services
+    //
+    // Recording Architecture:
+    //
+    // PRIMARY PATH (iOS 26+): LiveAudioService + LiveTranscriptionService
+    //   - Uses AVAudioEngine for real-time buffer streaming
+    //   - Feeds audio to SpeechAnalyzer for live transcription
+    //   - User sees transcript as they speak
+    //
+    // FALLBACK PATH: AudioRecordingService (deprecated)
+    //   - Uses AVAudioRecorder (simpler, no buffer access)
+    //   - Records to file, transcribes after recording stops
+    //   - Used when: speech permissions denied, Siri disabled, etc.
+    //
+    // Decision made in startRecording(): checks liveTranscriptionService.isAvailable
 
-    // Legacy service (fallback) - exposed for views that need audio level/duration during fallback
+    /// @deprecated Fallback recording service for when live transcription unavailable.
+    /// Uses AVAudioRecorder — cannot stream buffers for real-time transcription.
     let audioRecordingService = AudioRecordingService()
 
-    // New iOS 26+ services for live transcription
+    /// Primary recording service using AVAudioEngine.
+    /// Streams audio buffers to SpeechAnalyzer for live transcription.
     let liveAudioService = LiveAudioService()
+
+    /// Live transcription coordinator.
+    /// Manages SpeechAnalyzer and provides transcript updates during recording.
     let liveTranscriptionService = LiveTranscriptionService()
 
     // Transcription services
@@ -133,8 +152,9 @@ final class RecordingManager {
         loadRecentRecordings()
     }
 
-    /// Prewarm transcription assets at app launch (non-blocking)
-    /// Downloads the on-device speech recognition model if needed, then preheats the analyzer
+    /// Prewarm transcription and audio assets at app launch (non-blocking)
+    /// Downloads the on-device speech recognition model if needed, preheats the analyzer,
+    /// and pre-warms audio hardware to prevent first-recording failures.
     func prewarmTranscription() {
         guard liveTranscriptionService.isAvailable else {
             logger.info("🔥 Prewarm skipped: Live transcription not available")
@@ -155,6 +175,12 @@ final class RecordingManager {
 
                 // Step 2: Preheat the analyzer (Optimization 2)
                 await liveTranscriptionService.prepareAnalyzer()
+                logger.info("🔥 Transcription prewarm complete")
+
+                // Step 3: Pre-warm audio hardware (fixes first-recording failure bug)
+                // Apple: inputNode is created "on demand when first accessing" - must
+                // access after session is configured or hardware returns 0 sample rate
+                try await liveAudioService.prewarmAudioSystem()
                 logger.info("🔥 Prewarm complete: Ready for low-latency recording")
 
             } catch {

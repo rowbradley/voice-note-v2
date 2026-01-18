@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appSettings) private var appSettings
     @State private var showingResetConfirmation = false
     @State private var isResetting = false
     
@@ -22,11 +23,21 @@ struct SettingsView: View {
                         Text("Medium").tag("medium")
                         Text("High").tag("high")
                     }
-                    
+
                     Toggle("Background Recording", isOn: .constant(true))
                         .disabled(true)
                 }
-                
+
+                Section("Performance") {
+                    Toggle("Low Power Mode", isOn: Bindable(appSettings).lowPowerMode)
+
+                    if appSettings.lowPowerMode {
+                        Text("Reduces animation frame rate from 60fps to 30fps to save battery. Audio level bars also simplified.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
                 Section("Transcription") {
                     HStack {
                         Text("Language")
