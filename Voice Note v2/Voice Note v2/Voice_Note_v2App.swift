@@ -16,7 +16,8 @@ struct Voice_Note_v2App: App {
     @State private var databaseError: String?
     @State private var showingDatabaseError = false
     private let logger = Logger(subsystem: "com.voicenote", category: "App")
-    
+    private static let appSchema = Schema([Recording.self, Transcript.self, ProcessedNote.self, Template.self])
+
     init() {
         // Set up SwiftData with proper error handling
         do {
@@ -34,7 +35,7 @@ struct Voice_Note_v2App: App {
                     allowsSave: true
                 )
                 let fallbackContainer = try ModelContainer(
-                    for: Recording.self, Transcript.self, ProcessedNote.self, Template.self,
+                    for: Self.appSchema,
                     configurations: config
                 )
                 _modelContainer = State(initialValue: fallbackContainer)
@@ -102,10 +103,12 @@ struct Voice_Note_v2App: App {
     private func resetDatabase() async {
         do {
             // Delete the store
-            try deleteStore()
-            
-            // Give the system a moment to clean up
-            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            try deleteStoreFiles()
+
+            // Allow file system to complete deletion before recreating container.
+            // Without this delay, SQLite may still hold locks on the old store files,
+            // causing the new container creation to fail or reference stale data.
+            try? await Task.sleep(for: .milliseconds(100))
             
             // Recreate container
             let newContainer = try createModelContainer()
@@ -140,15 +143,18 @@ struct Voice_Note_v2App: App {
         )
         
         do {
-            // Try to create container with current schema
+            // Try to create container with schema
             let container = try ModelContainer(
-                for: Recording.self, Transcript.self, ProcessedNote.self, Template.self,
+                for: Self.appSchema,
                 configurations: modelConfiguration
             )
             
             // Configure the context
             container.mainContext.autosaveEnabled = true
-            
+
+            // Seed built-in templates if database is empty (first launch)
+            seedTemplatesIfNeeded(in: container.mainContext)
+
             logger.info("ModelContainer created successfully at: \(storeURL)")
             return container
         } catch {
@@ -161,11 +167,15 @@ struct Voice_Note_v2App: App {
             
             // Try again after reset
             let container = try ModelContainer(
-                for: Recording.self, Transcript.self, ProcessedNote.self, Template.self,
+                for: Self.appSchema,
                 configurations: modelConfiguration
             )
             
             container.mainContext.autosaveEnabled = true
+
+            // Seed built-in templates after reset
+            seedTemplatesIfNeeded(in: container.mainContext)
+
             logger.info("ModelContainer created after reset")
             return container
             #else
@@ -174,11 +184,7 @@ struct Voice_Note_v2App: App {
             #endif
         }
     }
-    
-    private func deleteStore() throws {
-        try deleteStoreFiles()
-    }
-    
+
     private func deleteStoreFiles() throws {
         // Clean up SwiftData store files
         // Note: Store filename matches what's used in createModelContainer() - "VoiceNote.store"
@@ -195,5 +201,29 @@ struct Voice_Note_v2App: App {
                 }
             }
         }
+    }
+
+    /// Seeds built-in templates into SwiftData if the database is empty.
+    /// Called synchronously during container creation to guarantee templates
+    /// exist before any view renders (avoids @Query returning empty array).
+    private func seedTemplatesIfNeeded(in context: ModelContext) {
+        let descriptor = FetchDescriptor<Template>()
+        guard (try? context.fetchCount(descriptor)) == 0 else { return }
+
+        for (index, templateData) in Template.builtInTemplates.enumerated() {
+            let template = Template(
+                name: templateData.name,
+                description: templateData.description,
+                prompt: templateData.prompt,
+                category: templateData.category,
+                isPremium: templateData.isPremium,
+                sortOrder: index,
+                version: templateData.version
+            )
+            context.insert(template)
+        }
+
+        try? context.save()
+        logger.info("Seeded \(Template.builtInTemplates.count) built-in templates")
     }
 }
