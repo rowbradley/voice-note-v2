@@ -49,6 +49,9 @@ final class LiveAudioService {
     private var interruptionTask: Task<Void, Never>?
     private(set) var isInterrupted = false
 
+    /// Debounce task for route change restarts
+    private var routeRestartDebounceTask: Task<Void, Never>?
+
     // MARK: - Lifecycle
 
     init() {
@@ -115,33 +118,7 @@ final class LiveAudioService {
 
         // Install tap on input node - MUST use inputFormat to match hardware
         let bufferSize: AVAudioFrameCount = 1024
-        inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, time in
-            guard let self = self else { return }
-
-            // Write to file
-            do {
-                try self.audioFile?.write(from: buffer)
-            } catch {
-                Task { @MainActor in
-                    self.logger.error("Failed to write audio buffer: \(error)")
-                }
-            }
-
-            // Yield to stream for transcription (include timestamp!)
-            self.bufferContinuation?.yield((buffer, time))
-
-            // Throttle UI updates based on Low Power Mode setting
-            // Standard: 60fps, Low Power: 30fps
-            // Buffers arrive at ~43/sec (1024 samples @ 44.1kHz)
-            let now = CFAbsoluteTimeGetCurrent()
-            let interval = AppSettings.shared.frameRateCFInterval
-            if now - self.lastUIUpdate >= interval {
-                self.lastUIUpdate = now
-                Task { @MainActor in
-                    self.updateAudioLevel(from: buffer)
-                }
-            }
-        }
+        inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat, block: makeTapCallback())
 
         // Start engine - finish continuation if this fails to prevent memory leak
         engine.prepare()
@@ -234,6 +211,10 @@ final class LiveAudioService {
         currentDuration = 0.0
         isVoiceDetected = false
 
+        // Cancel any pending route restart debounce
+        routeRestartDebounceTask?.cancel()
+        routeRestartDebounceTask = nil
+
         // Remove route change notifications
         NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
 
@@ -279,6 +260,10 @@ final class LiveAudioService {
         currentAudioLevel = 0.0
         currentDuration = 0.0
         isVoiceDetected = false
+
+        // Cancel any pending route restart debounce
+        routeRestartDebounceTask?.cancel()
+        routeRestartDebounceTask = nil
 
         // Remove notifications
         NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
@@ -337,7 +322,12 @@ final class LiveAudioService {
         try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
         try session.setActive(true)
 
-        logger.debug("Audio session configured")
+        // Wait for Bluetooth HFP negotiation to complete
+        // When AirPods are connected, iOS needs time to switch from A2DP (output only) to HFP (bidirectional)
+        // Without this delay, we may capture the wrong input format (built-in mic instead of Bluetooth)
+        try await Task.sleep(nanoseconds: AudioConstants.Timing.hfpNegotiation)
+
+        logger.debug("Audio session configured, current route: \(session.currentRoute.inputs.first?.portType.rawValue ?? "none")")
     }
 
     private func createRecordingURL() throws -> URL {
@@ -395,13 +385,54 @@ final class LiveAudioService {
         currentAudioLevel = max(0.0, min(1.0, normalizedLevel))
     }
 
+    /// Creates tap callback closure for audio buffer processing.
+    /// Shared between initial recording and engine restarts.
+    private func makeTapCallback() -> (AVAudioPCMBuffer, AVAudioTime) -> Void {
+        return { [weak self] buffer, time in
+            guard let self = self else { return }
+
+            // Write to file
+            do {
+                try self.audioFile?.write(from: buffer)
+            } catch {
+                Task { @MainActor in
+                    self.logger.error("Failed to write audio buffer: \(error)")
+                }
+            }
+
+            // Yield to stream for transcription
+            self.bufferContinuation?.yield((buffer, time))
+
+            // Throttle UI updates based on frame rate setting
+            let now = CFAbsoluteTimeGetCurrent()
+            let interval = AppSettings.shared.frameRateCFInterval
+            if now - self.lastUIUpdate >= interval {
+                self.lastUIUpdate = now
+                Task { @MainActor in
+                    self.updateAudioLevel(from: buffer)
+                }
+            }
+        }
+    }
+
     // MARK: - Audio Input Device Detection
 
-    private func updateAudioInputDevice() {
+    /// Update current input device from audio session route.
+    /// Called during recording and can be called in idle state to show device indicator.
+    func updateAudioInputDevice() {
         let currentRoute = AVAudioSession.sharedInstance().currentRoute
         if let input = currentRoute.inputs.first {
             currentInputDevice = getReadableDeviceName(for: input)
+        } else {
+            currentInputDevice = "Microphone"
         }
+    }
+
+    /// Whether the current input is an external device (headphones, Bluetooth, etc.)
+    var isExternalInputConnected: Bool {
+        let route = AVAudioSession.sharedInstance().currentRoute
+        guard let input = route.inputs.first else { return false }
+        return input.portType != .builtInMic
     }
 
     private func getReadableDeviceName(for input: AVAudioSessionPortDescription) -> String {
@@ -434,9 +465,75 @@ final class LiveAudioService {
     }
 
     @objc private func handleRouteChange(notification: Notification) {
-        Task { @MainActor in
-            updateAudioInputDevice()
+        guard let userInfo = notification.userInfo,
+              let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+            return
         }
+
+        Task { @MainActor in
+            let oldDevice = currentInputDevice
+            updateAudioInputDevice()
+
+            // If recording is active and input device changed, restart engine to use new input
+            // This handles: AirPods connecting/disconnecting, wired headset plugging in, etc.
+            guard isRecording,
+                  reason == .newDeviceAvailable || reason == .oldDeviceUnavailable || reason == .routeConfigurationChange,
+                  currentInputDevice != oldDevice else {
+                return
+            }
+
+            logger.info("Audio input changed during recording: \(oldDevice) → \(self.currentInputDevice). Scheduling restart...")
+
+            // Debounce rapid route changes (e.g., user rapidly plugging/unplugging)
+            routeRestartDebounceTask?.cancel()
+            routeRestartDebounceTask = Task {
+                try? await Task.sleep(nanoseconds: AudioConstants.Timing.routeDebounce)
+                guard !Task.isCancelled else { return }
+
+                do {
+                    try await restartAudioEngineForNewInput()
+                    logger.info("Audio engine restarted successfully for new input")
+                } catch {
+                    logger.error("Failed to restart audio engine: \(error)")
+                }
+            }
+        }
+    }
+
+    /// Restart the audio engine to pick up a new input device while preserving the recording session
+    private func restartAudioEngineForNewInput() async throws {
+        guard let engine = audioEngine, bufferContinuation != nil else {
+            throw LiveAudioError.noActiveRecording
+        }
+
+        // Stop current engine and remove tap
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+
+        // Brief pause to allow route to stabilize
+        try await Task.sleep(nanoseconds: AudioConstants.Timing.routeStabilization)
+
+        // Get new input format after route change
+        let inputNode = engine.inputNode
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+
+        // Validate new format
+        guard inputFormat.sampleRate > 0 && inputFormat.channelCount > 0 else {
+            logger.error("Invalid input format after route change: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) channels")
+            throw LiveAudioError.audioSystemNotReady
+        }
+
+        audioFormat = inputFormat
+        logger.debug("New recording format: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) channels")
+
+        // Reinstall tap with new format
+        let bufferSize: AVAudioFrameCount = 1024
+        inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat, block: makeTapCallback())
+
+        // Restart engine
+        engine.prepare()
+        try engine.start()
     }
 
     // MARK: - Interruption Handling (Background Recording)

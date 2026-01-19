@@ -132,6 +132,28 @@ enum AudioConstants {
         static let stableThreshold = 2
     }
 
+    // MARK: - Audio Session Timing
+    //
+    // Delays needed for audio hardware state transitions.
+    // Values determined empirically - too short causes missed input,
+    // too long creates noticeable lag.
+
+    /// Timing constants for audio session operations.
+    enum Timing {
+        /// Delay after setActive(true) for Bluetooth HFP negotiation.
+        /// AirPods need time to switch from A2DP (output) to HFP (bidirectional).
+        /// 100ms works reliably across AirPods generations.
+        static let hfpNegotiation: UInt64 = 100_000_000  // 100ms
+
+        /// Delay after route change before restarting engine.
+        /// Allows iOS audio routing to stabilize after device connect/disconnect.
+        static let routeStabilization: UInt64 = 50_000_000  // 50ms
+
+        /// Debounce interval for rapid route changes.
+        /// Prevents multiple engine restarts if user rapidly plugs/unplugs.
+        static let routeDebounce: UInt64 = 200_000_000  // 200ms
+    }
+
     // MARK: - Audio Level Bar Visualization
     //
     // The audio level bar displays a row of vertical bars that respond to volume.
