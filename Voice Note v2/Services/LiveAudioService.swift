@@ -501,6 +501,52 @@ final class LiveAudioService {
         }
     }
 
+    /// Poll until audio format stabilizes (unchanged for 3 consecutive 100ms checks).
+    /// Bluetooth HFP negotiation can take 500ms+ so fixed delays are unreliable.
+    /// - Parameter timeout: Maximum time to wait for stabilization (default 2 seconds)
+    /// - Returns: The stable AVAudioFormat
+    /// - Throws: `formatStabilizationTimeout` if format doesn't stabilize within timeout
+    private func waitForStableFormat(timeout: TimeInterval = 2.0) async throws -> AVAudioFormat {
+        guard let engine = audioEngine else {
+            throw LiveAudioError.noActiveRecording
+        }
+
+        let startTime = Date()
+        var lastFormat: AVAudioFormat? = nil
+        var stableCount = 0
+
+        while Date().timeIntervalSince(startTime) < timeout {
+            let currentFormat = engine.inputNode.outputFormat(forBus: 0)
+
+            // Skip invalid formats (hardware not ready yet)
+            guard currentFormat.sampleRate > 0 && currentFormat.channelCount > 0 else {
+                try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                continue
+            }
+
+            // Check if format matches previous reading
+            if let last = lastFormat,
+               last.sampleRate == currentFormat.sampleRate &&
+               last.channelCount == currentFormat.channelCount {
+                stableCount += 1
+                if stableCount >= 3 { // Stable for 300ms (3 × 100ms)
+                    logger.info("Format stabilized after \(String(format: "%.0f", Date().timeIntervalSince(startTime) * 1000))ms: \(currentFormat.sampleRate)Hz, \(currentFormat.channelCount) channels")
+                    return currentFormat
+                }
+            } else {
+                // Format changed - reset counter
+                stableCount = 0
+                lastFormat = currentFormat
+                logger.debug("Format changed to: \(currentFormat.sampleRate)Hz, \(currentFormat.channelCount) channels")
+            }
+
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        }
+
+        logger.error("Format stabilization timeout after \(timeout)s")
+        throw LiveAudioError.formatStabilizationTimeout
+    }
+
     /// Restart the audio engine to pick up a new input device while preserving the recording session
     private func restartAudioEngineForNewInput() async throws {
         guard let engine = audioEngine, bufferContinuation != nil else {
@@ -511,25 +557,15 @@ final class LiveAudioService {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
 
-        // Brief pause to allow route to stabilize
-        try await Task.sleep(nanoseconds: AudioConstants.Timing.routeStabilization)
-
-        // Get new input format after route change
-        let inputNode = engine.inputNode
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-
-        // Validate new format
-        guard inputFormat.sampleRate > 0 && inputFormat.channelCount > 0 else {
-            logger.error("Invalid input format after route change: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) channels")
-            throw LiveAudioError.audioSystemNotReady
-        }
+        // Wait for audio format to stabilize after route change
+        // Bluetooth HFP negotiation can take 500ms+ so we poll until stable
+        let inputFormat = try await waitForStableFormat()
 
         audioFormat = inputFormat
-        logger.debug("New recording format: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) channels")
 
         // Reinstall tap with new format
         let bufferSize: AVAudioFrameCount = 1024
-        inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat, block: makeTapCallback())
+        engine.inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat, block: makeTapCallback())
 
         // Restart engine
         engine.prepare()
@@ -611,6 +647,7 @@ final class LiveAudioService {
 enum LiveAudioError: LocalizedError {
     case noActiveRecording
     case audioSystemNotReady
+    case formatStabilizationTimeout
 
     var errorDescription: String? {
         switch self {
@@ -618,6 +655,8 @@ enum LiveAudioError: LocalizedError {
             return "No active recording found"
         case .audioSystemNotReady:
             return "Audio hardware not ready"
+        case .formatStabilizationTimeout:
+            return "Audio format did not stabilize after route change"
         }
     }
 }
