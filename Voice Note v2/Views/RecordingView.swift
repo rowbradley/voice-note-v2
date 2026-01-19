@@ -195,7 +195,6 @@ struct RecordingView: View {
 
             LiveRecordingControlsView(
                 audioLevel: recordingManager.currentAudioLevel,
-                isVoiceDetected: recordingManager.isVoiceDetected,
                 onStop: {
                     Task {
                         await recordingManager.toggleRecording()

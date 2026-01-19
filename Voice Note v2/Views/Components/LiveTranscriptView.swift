@@ -165,13 +165,12 @@ struct LiveTranscriptView: View {
 /// Controls view displayed below the transcript during live recording
 struct LiveRecordingControlsView: View {
     let audioLevel: Float
-    let isVoiceDetected: Bool
     let onStop: () -> Void
 
     var body: some View {
         VStack(alignment: .center, spacing: Spacing.sm) {
             // Audio level visualization
-            AudioLevelBar(level: audioLevel, isVoiceDetected: isVoiceDetected)
+            AudioLevelBar(level: audioLevel)
                 .frame(height: ComponentSize.minTouchTarget)
 
             Spacer()
@@ -201,61 +200,143 @@ struct LiveRecordingControlsView: View {
     }
 }
 
-/// High-performance horizontal audio level bar using TimelineView + Canvas.
+/// Audio level visualization using a center-out symmetric dot matrix.
 ///
-/// Responds to Low Power Mode:
-/// - Standard: 60fps, 20 bars
-/// - Low Power: 30fps, 12 bars
+/// Visual behavior:
+/// - 3 rows × 15 columns (9 in Low Power Mode)
+/// - Fills from center outward horizontally as level increases
+/// - Fills bottom-up vertically (bottom row = low, top row = loud)
+/// - Color zones: green (center) → yellow (mid) → red (edges)
+///
+/// Performance:
+/// - TimelineView provides 30/60fps update scheduling
+/// - Canvas uses immediate-mode drawing with Metal compositing
+/// - `.drawingGroup()` enables GPU acceleration
 struct AudioLevelBar: View {
+    // MARK: - Constants
+
+    private enum Constants {
+        // Grid dimensions
+        static let rowCount = 3
+        static let standardColumnCount = 15  // odd for center symmetry
+        static let lowPowerColumnCount = 9   // odd for center symmetry
+        static let dotDiameter: CGFloat = 6.0
+        static let dotSpacing: CGFloat = 3.0
+        static let rowSpacing: CGFloat = 3.0
+
+        // Row activation thresholds (level required to light each row)
+        static let midRowThreshold: Float = 0.33
+        static let topRowThreshold: Float = 0.66
+
+        // Color zone boundaries (normalized distance from center)
+        static let yellowZoneStart: Float = 0.5
+        static let redZoneStart: Float = 0.8
+
+        // Inactive dot appearance
+        static let inactiveOpacity: Double = 0.3
+    }
+
+    // MARK: - Properties
+
     /// Current audio level (0.0 to 1.0)
     let level: Float
 
-    /// Whether voice is currently detected (affects color)
-    let isVoiceDetected: Bool
-
-    /// App settings for frame rate and bar count
+    /// App settings for frame rate
     @Environment(\.appSettings) private var appSettings
 
     var body: some View {
         let interval = appSettings.frameRateInterval
-        let barCount = appSettings.levelBarCount
-        let spacing = AudioConstants.LevelBar.barSpacing
+        let columnCount = appSettings.lowPowerMode
+            ? Constants.lowPowerColumnCount
+            : Constants.standardColumnCount
 
         TimelineView(.animation(minimumInterval: interval)) { _ in
             Canvas { context, size in
-                let totalSpacing = spacing * CGFloat(barCount - 1)
-                let barWidth = (size.width - totalSpacing) / CGFloat(barCount)
+                let totalHorizontalSpace = Constants.dotSpacing * CGFloat(columnCount - 1)
+                let totalVerticalSpace = Constants.rowSpacing * CGFloat(Constants.rowCount - 1)
 
-                for index in 0..<barCount {
-                    let x = CGFloat(index) * (barWidth + spacing)
-                    let threshold = Float(index) / Float(barCount)
-                    let isActive = level > threshold
+                // Calculate dot size to fit, capped at max diameter
+                let availableWidth = size.width - totalHorizontalSpace
+                let availableHeight = size.height - totalVerticalSpace
+                let dotSize = min(
+                    availableWidth / CGFloat(columnCount),
+                    availableHeight / CGFloat(Constants.rowCount),
+                    Constants.dotDiameter
+                )
 
-                    let barHeight = isActive ? size.height : size.height * 0.3
-                    let y = size.height - barHeight
+                // Center the grid horizontally
+                let gridWidth = CGFloat(columnCount) * dotSize + totalHorizontalSpace
+                let startX = (size.width - gridWidth) / 2
 
-                    let rect = CGRect(x: x, y: y, width: barWidth, height: barHeight)
-                    let path = Path(roundedRect: rect, cornerRadius: 2)
-                    context.fill(path, with: .color(barColor(for: index, isActive: isActive, barCount: barCount)))
+                // Center the grid vertically
+                let gridHeight = CGFloat(Constants.rowCount) * dotSize + totalVerticalSpace
+                let startY = (size.height - gridHeight) / 2
+
+                let activeRows = activeRowCount()
+
+                for row in 0..<Constants.rowCount {
+                    for column in 0..<columnCount {
+                        // Row 0 = bottom, row 2 = top
+                        // Bottom rows light first, so check if row < activeRows
+                        let rowActive = row < activeRows
+                        let columnActive = isColumnActive(column: column, totalColumns: columnCount)
+                        let isActive = rowActive && columnActive
+
+                        let x = startX + CGFloat(column) * (dotSize + Constants.dotSpacing)
+                        // Flip Y so row 0 is at bottom
+                        let y = startY + CGFloat(Constants.rowCount - 1 - row) * (dotSize + Constants.rowSpacing)
+
+                        let rect = CGRect(x: x, y: y, width: dotSize, height: dotSize)
+                        let path = Path(ellipseIn: rect)
+
+                        let color = dotColor(column: column, totalColumns: columnCount, isActive: isActive)
+                        context.fill(path, with: .color(color))
+                    }
                 }
             }
             .drawingGroup()
         }
     }
 
-    private func barColor(for index: Int, isActive: Bool, barCount: Int) -> Color {
+    // MARK: - Activation Logic
+
+    /// Determines if a column should be lit based on center-out fill pattern.
+    /// Center columns light first, edges require higher level.
+    private func isColumnActive(column: Int, totalColumns: Int) -> Bool {
+        let center = Float(totalColumns - 1) / 2.0
+        let distanceFromCenter = abs(Float(column) - center)
+        let maxDistance = center
+        let normalizedDistance = distanceFromCenter / maxDistance  // 0.0 at center, 1.0 at edge
+
+        // Center lights first (low threshold), edges light last (high threshold)
+        return level >= normalizedDistance
+    }
+
+    /// Returns how many rows should be lit (1-3) based on level.
+    /// Bottom row lights first, top row requires highest level.
+    private func activeRowCount() -> Int {
+        if level >= Constants.topRowThreshold { return 3 }
+        if level >= Constants.midRowThreshold { return 2 }
+        return 1
+    }
+
+    /// Determines dot color based on horizontal distance from center.
+    /// Center = green, mid = yellow, edges = red.
+    private func dotColor(column: Int, totalColumns: Int, isActive: Bool) -> Color {
         if !isActive {
-            return Color.gray.opacity(0.3)
+            return Color.gray.opacity(Constants.inactiveOpacity)
         }
 
-        let position = Float(index) / Float(barCount)
-        if position > AudioConstants.LevelThreshold.high {
+        let center = Float(totalColumns - 1) / 2.0
+        let distanceFromCenter = abs(Float(column) - center)
+        let normalizedDistance = distanceFromCenter / center  // 0.0 to 1.0
+
+        if normalizedDistance >= Constants.redZoneStart {
             return .red
-        } else if position > AudioConstants.LevelThreshold.medium {
+        } else if normalizedDistance >= Constants.yellowZoneStart {
             return .yellow
         } else {
-            // Green when voice detected, blue otherwise
-            return isVoiceDetected ? .green : .blue
+            return .green
         }
     }
 }
@@ -273,7 +354,6 @@ struct AudioLevelBar: View {
 
         LiveRecordingControlsView(
             audioLevel: 0.6,
-            isVoiceDetected: true,
             onStop: {}
         )
         .frame(height: 200)
@@ -292,7 +372,6 @@ struct AudioLevelBar: View {
 
         LiveRecordingControlsView(
             audioLevel: 0.2,
-            isVoiceDetected: false,
             onStop: {}
         )
         .frame(height: 200)
