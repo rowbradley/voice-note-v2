@@ -38,6 +38,20 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Audio Visualizer") {
+                    Toggle("Show Audio Level", isOn: Bindable(appSettings).showAudioVisualizer)
+
+                    if appSettings.showAudioVisualizer {
+                        Toggle("Monochrome Style", isOn: Bindable(appSettings).audioVisualizerMonochrome)
+
+                        if appSettings.audioVisualizerMonochrome {
+                            Text("Uses subtle gray dots instead of colored.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
                 Section("Transcription") {
                     HStack {
                         Text("Language")

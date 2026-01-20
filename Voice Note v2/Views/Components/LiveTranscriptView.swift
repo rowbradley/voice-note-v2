@@ -203,10 +203,10 @@ struct LiveRecordingControlsView: View {
 /// Audio level visualization using a center-out symmetric dot matrix.
 ///
 /// Visual behavior:
-/// - 3 rows × 15 columns (9 in Low Power Mode)
+/// - 3 rows × 19 columns (11 in Low Power Mode)
 /// - Fills from center outward horizontally as level increases
 /// - Fills bottom-up vertically (bottom row = low, top row = loud)
-/// - Color zones: green (center) → yellow (mid) → red (edges)
+/// - Color zones: green (center) → yellow (mid) → red (edges), or monochrome gray
 ///
 /// Performance:
 /// - TimelineView provides 30/60fps update scheduling
@@ -216,13 +216,13 @@ struct AudioLevelBar: View {
     // MARK: - Constants
 
     private enum Constants {
-        // Grid dimensions
+        // Grid dimensions (~1.33x scale, pixel-aligned)
         static let rowCount = 3
-        static let standardColumnCount = 15  // odd for center symmetry
-        static let lowPowerColumnCount = 9   // odd for center symmetry
-        static let dotDiameter: CGFloat = 6.0
-        static let dotSpacing: CGFloat = 3.0
-        static let rowSpacing: CGFloat = 3.0
+        static let standardColumnCount = 19  // was 15 (odd for center symmetry)
+        static let lowPowerColumnCount = 11  // was 9 (odd for center symmetry)
+        static let dotDiameter: CGFloat = 8.0  // was 6.0 (pixel-aligned on all devices)
+        static let dotSpacing: CGFloat = 4.0   // was 3.0 (pixel-aligned)
+        static let rowSpacing: CGFloat = 4.0   // was 3.0 (pixel-aligned)
 
         // Row activation thresholds (level required to light each row)
         static let midRowThreshold: Float = 0.33
@@ -232,8 +232,9 @@ struct AudioLevelBar: View {
         static let yellowZoneStart: Float = 0.5
         static let redZoneStart: Float = 0.8
 
-        // Inactive dot appearance
+        // Appearance
         static let inactiveOpacity: Double = 0.3
+        static let monochromeOpacity: Double = 0.65  // slightly higher for better contrast
     }
 
     // MARK: - Properties
@@ -244,58 +245,62 @@ struct AudioLevelBar: View {
     /// App settings for frame rate
     @Environment(\.appSettings) private var appSettings
 
+    @ViewBuilder
     var body: some View {
-        let interval = appSettings.frameRateInterval
-        let columnCount = appSettings.lowPowerMode
-            ? Constants.lowPowerColumnCount
-            : Constants.standardColumnCount
+        if appSettings.showAudioVisualizer {
+            let interval = appSettings.frameRateInterval
+            let columnCount = appSettings.lowPowerMode
+                ? Constants.lowPowerColumnCount
+                : Constants.standardColumnCount
 
-        TimelineView(.animation(minimumInterval: interval)) { _ in
-            Canvas { context, size in
-                let totalHorizontalSpace = Constants.dotSpacing * CGFloat(columnCount - 1)
-                let totalVerticalSpace = Constants.rowSpacing * CGFloat(Constants.rowCount - 1)
+            TimelineView(.animation(minimumInterval: interval)) { _ in
+                Canvas { context, size in
+                    let totalHorizontalSpace = Constants.dotSpacing * CGFloat(columnCount - 1)
+                    let totalVerticalSpace = Constants.rowSpacing * CGFloat(Constants.rowCount - 1)
 
-                // Calculate dot size to fit, capped at max diameter
-                let availableWidth = size.width - totalHorizontalSpace
-                let availableHeight = size.height - totalVerticalSpace
-                let dotSize = min(
-                    availableWidth / CGFloat(columnCount),
-                    availableHeight / CGFloat(Constants.rowCount),
-                    Constants.dotDiameter
-                )
+                    // Calculate dot size to fit, capped at max diameter
+                    let availableWidth = size.width - totalHorizontalSpace
+                    let availableHeight = size.height - totalVerticalSpace
+                    let dotSize = min(
+                        availableWidth / CGFloat(columnCount),
+                        availableHeight / CGFloat(Constants.rowCount),
+                        Constants.dotDiameter
+                    )
 
-                // Center the grid horizontally
-                let gridWidth = CGFloat(columnCount) * dotSize + totalHorizontalSpace
-                let startX = (size.width - gridWidth) / 2
+                    // Center the grid horizontally
+                    let gridWidth = CGFloat(columnCount) * dotSize + totalHorizontalSpace
+                    let startX = (size.width - gridWidth) / 2
 
-                // Center the grid vertically
-                let gridHeight = CGFloat(Constants.rowCount) * dotSize + totalVerticalSpace
-                let startY = (size.height - gridHeight) / 2
+                    // Center the grid vertically
+                    let gridHeight = CGFloat(Constants.rowCount) * dotSize + totalVerticalSpace
+                    let startY = (size.height - gridHeight) / 2
 
-                let activeRows = activeRowCount()
+                    let activeRows = activeRowCount()
 
-                for row in 0..<Constants.rowCount {
-                    for column in 0..<columnCount {
-                        // Row 0 = bottom, row 2 = top
-                        // Bottom rows light first, so check if row < activeRows
-                        let rowActive = row < activeRows
-                        let columnActive = isColumnActive(column: column, totalColumns: columnCount)
-                        let isActive = rowActive && columnActive
+                    for row in 0..<Constants.rowCount {
+                        for column in 0..<columnCount {
+                            // Row 0 = bottom, row 2 = top
+                            // Bottom rows light first, so check if row < activeRows
+                            let rowActive = row < activeRows
+                            let columnActive = isColumnActive(column: column, totalColumns: columnCount)
+                            let isActive = rowActive && columnActive
 
-                        let x = startX + CGFloat(column) * (dotSize + Constants.dotSpacing)
-                        // Flip Y so row 0 is at bottom
-                        let y = startY + CGFloat(Constants.rowCount - 1 - row) * (dotSize + Constants.rowSpacing)
+                            let x = startX + CGFloat(column) * (dotSize + Constants.dotSpacing)
+                            // Flip Y so row 0 is at bottom
+                            let y = startY + CGFloat(Constants.rowCount - 1 - row) * (dotSize + Constants.rowSpacing)
 
-                        let rect = CGRect(x: x, y: y, width: dotSize, height: dotSize)
-                        let path = Path(ellipseIn: rect)
+                            let rect = CGRect(x: x, y: y, width: dotSize, height: dotSize)
+                            let path = Path(ellipseIn: rect)
 
-                        let color = dotColor(column: column, totalColumns: columnCount, isActive: isActive)
-                        context.fill(path, with: .color(color))
+                            let color = dotColor(column: column, totalColumns: columnCount, isActive: isActive)
+                            context.fill(path, with: .color(color))
+                        }
                     }
                 }
+                .drawingGroup()
             }
-            .drawingGroup()
         }
+        // When disabled, renders nothing (no placeholder needed since parent handles layout)
     }
 
     // MARK: - Activation Logic
@@ -321,12 +326,18 @@ struct AudioLevelBar: View {
     }
 
     /// Determines dot color based on horizontal distance from center.
-    /// Center = green, mid = yellow, edges = red.
+    /// Center = green, mid = yellow, edges = red. Or monochrome gray if setting enabled.
     private func dotColor(column: Int, totalColumns: Int, isActive: Bool) -> Color {
         if !isActive {
             return Color.gray.opacity(Constants.inactiveOpacity)
         }
 
+        // Monochrome mode: adapts to light/dark mode via Color.primary
+        if appSettings.audioVisualizerMonochrome {
+            return Color.primary.opacity(Constants.monochromeOpacity)
+        }
+
+        // Colored mode (existing logic)
         let center = Float(totalColumns - 1) / 2.0
         let distanceFromCenter = abs(Float(column) - center)
         let normalizedDistance = distanceFromCenter / center  // 0.0 to 1.0

@@ -3,35 +3,39 @@ import UniformTypeIdentifiers
 
 struct NoteCardView: View {
     let title: String
-    let content: String
-    let isMarkdown: Bool
+    let content: AttributedString
     let canEdit: Bool
     let createdAt: Date?
     let showDeleteButton: Bool
-    
+
     @State private var showCopySuccess = false
-    @State private var copyButtonText = "Copy"
     @State private var showingDeleteAlert = false
-    
+    @State private var copyHapticTrigger = 0
+    @State private var copyFeedbackTask: Task<Void, Never>?
+
+    /// Derived copy button text from state
+    private var copyButtonText: String {
+        showCopySuccess ? "Copied!" : "Copy"
+    }
+
     // Callbacks
     var onTap: (() -> Void)?
     var onEditTap: (() -> Void)?
     var onRetranscribe: (() -> Void)?
     var onDelete: (() -> Void)?
-    
+
     // Constants for preview
     private let previewLineHeight: CGFloat = 18 // Reduced for compact view
     private let previewLines: Int = 6
     private var previewHeight: CGFloat {
         previewLineHeight * CGFloat(previewLines) + 8 // Added 8 points for padding
     }
-    
+
     // MARK: - Initializers
-    
+
     init(
         title: String,
-        content: String,
-        isMarkdown: Bool,
+        content: AttributedString,
         canEdit: Bool,
         createdAt: Date? = nil,
         showDeleteButton: Bool = false,
@@ -42,7 +46,6 @@ struct NoteCardView: View {
     ) {
         self.title = title
         self.content = content
-        self.isMarkdown = isMarkdown
         self.canEdit = canEdit
         self.createdAt = createdAt
         self.showDeleteButton = showDeleteButton
@@ -50,6 +53,11 @@ struct NoteCardView: View {
         self.onEditTap = onEditTap
         self.onRetranscribe = onRetranscribe
         self.onDelete = onDelete
+    }
+
+    /// Plain text content for copying and sharing
+    private var plainTextContent: String {
+        String(content.characters)
     }
     
     var body: some View {
@@ -92,32 +100,22 @@ struct NoteCardView: View {
                     .opacity(0.3)
             }
             
-            // Content preview with fade
+            // Content preview with fade - Native AttributedString rendering
             ZStack(alignment: .bottom) {
-                if isMarkdown {
-                    CompactMarkdownView(
-                        content: content,
-                        templateType: detectTemplateType()
-                    )
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .frame(height: previewHeight)
-                    .clipped()
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(content)
-                                .font(.callout) // Smaller font for compact view
-                                .lineSpacing(2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, 4) // Consistent with markdown padding
-                        }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(content)
+                            .font(.callout) // Smaller font for compact view
+                            .lineSpacing(6) // Increased for visible paragraph spacing
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 4)
                     }
-                    .scrollDisabled(true)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .frame(height: previewHeight)
-                    .clipped()
                 }
-                
+                .scrollDisabled(true)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .frame(height: previewHeight)
+                .clipped()
+
                 // Always show fade overlay
                 LinearGradient(
                     gradient: Gradient(stops: [
@@ -176,7 +174,7 @@ struct NoteCardView: View {
                     .controlSize(.small)
                     .animation(.easeInOut(duration: 0.2), value: showCopySuccess)
                     
-                    ShareLink(item: content) {
+                    ShareLink(item: plainTextContent) {
                         Label("Share", systemImage: "square.and.arrow.up")
                             .font(.caption)
                     }
@@ -200,93 +198,66 @@ struct NoteCardView: View {
         } message: {
             Text("This will permanently delete this processed note.")
         }
+        .sensoryFeedback(.success, trigger: copyHapticTrigger)
     }
     
-    private func detectTemplateType() -> String {
-        // Trust the actual template name from the database - no guessing from content
-        let titleLower = title.lowercased()
-        
-        // Exact template name matches only
-        if titleLower == "key quotes" {
-            return "key quotes"
-        } else if titleLower == "next questions" {
-            return "next questions"
-        } else if titleLower == "action list" {
-            return "action list"
-        } else if titleLower == "smart summary" {
-            return "smart summary"
-        } else if titleLower == "flashcard maker" {
-            return "flashcard maker"
-        } else if titleLower == "brainstorm" {
-            return "brainstorm"
-        } else if titleLower == "cleanup" {
-            return "cleanup"
-        } else if titleLower == "message ready" {
-            return "message ready"
-        } else if titleLower == "idea outline" {
-            return "idea outline"
-        } else if titleLower == "tone analysis" {
-            return "tone analysis"
-        }
-        
-        // Return empty string for unknown templates (use default rendering)
-        return ""
-    }
-
     private func copyContent() {
-        if isMarkdown {
-            // Copy as rich text
-            copyRichText()
-        } else {
-            // Copy as plain text
-            UIPasteboard.general.string = content
-        }
-        
-        // Visual feedback
-        withAnimation(.easeInOut(duration: 0.2)) {
-            copyButtonText = "Copied!"
-            showCopySuccess = true
-        }
-        
-        // Reset after delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                copyButtonText = "Copy"
-                showCopySuccess = false
-            }
-        }
-        
-        // Haptic feedback
-        let feedback = UINotificationFeedbackGenerator()
-        feedback.prepare()
-        feedback.notificationOccurred(.success)
-    }
-    
-    private func copyRichText() {
+        // Copy as rich text with RTF + plain text fallback
         do {
-            // Parse markdown to attributed string
-            let attributed = try AttributedString(
-                markdown: content,
-                options: AttributedString.MarkdownParsingOptions(
-                    interpretedSyntax: .full,
-                    failurePolicy: .returnPartiallyParsedIfPossible
-                )
-            )
-            
-            let nsAttributed = NSAttributedString(attributed)
-            
+            let nsAttributed = NSAttributedString(content)
+
             // Convert NSAttributedString to RTF data
-            let rtfData = try nsAttributed.data(from: NSRange(location: 0, length: nsAttributed.length), 
-                                               documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
-            
+            let rtfData = try nsAttributed.data(
+                from: NSRange(location: 0, length: nsAttributed.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+
             UIPasteboard.general.setItems([
-                [UTType.plainText.identifier: String(attributed.characters)],
+                [UTType.plainText.identifier: plainTextContent],
                 [UTType.rtf.identifier: rtfData]
             ])
         } catch {
             // Fallback to plain text if RTF conversion fails
-            UIPasteboard.general.string = content
+            UIPasteboard.general.string = plainTextContent
         }
+
+        // Visual feedback
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showCopySuccess = true
+        }
+
+        // Trigger haptic feedback via sensoryFeedback modifier
+        copyHapticTrigger += 1
+
+        // Reset after delay - cancel previous task to avoid conflicts
+        copyFeedbackTask?.cancel()
+        copyFeedbackTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showCopySuccess = false
+                }
+            }
+        }
+    }
+
+    // MARK: - Markdown Export
+
+    /// Converts AttributedString content to markdown for sharing/export
+    func markdownForExport() -> String {
+        var output = ""
+        for run in content.runs {
+            var text = String(content[run.range].characters)
+            if run.inlinePresentationIntent?.contains(.stronglyEmphasized) == true {
+                text = "**\(text)**"
+            }
+            if run.inlinePresentationIntent?.contains(.emphasized) == true {
+                text = "*\(text)*"
+            }
+            output += text
+        }
+        return output
     }
 }
 
@@ -295,17 +266,15 @@ struct NoteCardView: View {
     VStack(spacing: 16) {
         NoteCardView(
             title: "Transcript",
-            content: "This is a sample transcript text that can be edited. It contains multiple lines to show how the preview works with the fade effect at the bottom. The content continues beyond what is visible in the preview area.",
-            isMarkdown: false,
+            content: AttributedString("This is a sample transcript text that can be edited. It contains multiple lines to show how the preview works with the fade effect at the bottom. The content continues beyond what is visible in the preview area."),
             canEdit: true,
             onTap: { },
             onEditTap: { }
         )
-        
+
         NoteCardView(
             title: "Key Quotes",
-            content: "## Key Insights\n\n> \"This is a powerful insight that demonstrates the markdown rendering capabilities.\"\n\n**Context**: This quote shows how the system handles blockquotes and formatting.\n\n> \"Another important perspective that adds depth to the discussion.\"\n\n**Context**: Demonstrates multiple quotes with proper styling.",
-            isMarkdown: true,
+            content: (try? AttributedString(markdown: "## Key Insights\n\n> \"This is a powerful insight that demonstrates the markdown rendering capabilities.\"\n\n**Context**: This quote shows how the system handles blockquotes and formatting.\n\n> \"Another important perspective that adds depth to the discussion.\"\n\n**Context**: Demonstrates multiple quotes with proper styling.")) ?? AttributedString("Preview content"),
             canEdit: false,
             createdAt: Date(),
             showDeleteButton: true,

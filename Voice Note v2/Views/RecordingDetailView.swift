@@ -25,12 +25,16 @@ struct RecordingDetailView: View {
     
     // Expanded content sheet
     @State private var expandedContent: ExpandedContentType?
-    @State private var transcriptBinding: String = ""
-    @State private var noteBinding: String = ""
+
+    // Raw/cleaned transcript toggle (Pro feature)
+    @State private var showingRawTranscript = false
 
     // Cached share content for performance (ShareLink accesses item multiple times)
     @State private var cachedShareContent: String = ""
     @State private var shareContentDebounceTask: Task<Void, Never>?
+
+    // Save error feedback
+    @State private var saveError: String?
 
     private let logger = Logger(subsystem: "com.voicenote", category: "RecordingDetailView")
     
@@ -76,8 +80,8 @@ struct RecordingDetailView: View {
                 )
                 
                 // Transcript
-                if recording.transcript != nil {
-                    VStack(spacing: 0) {
+                if let transcript = recording.transcript {
+                    VStack(spacing: 8) {
                         // Show retranscribe status if active
                         if isRetranscribing {
                             VStack(spacing: 8) {
@@ -88,7 +92,7 @@ struct RecordingDetailView: View {
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
-                                
+
                                 if !retranscribeStatus.isEmpty {
                                     Text(retranscribeStatus)
                                         .font(.caption2)
@@ -100,13 +104,21 @@ struct RecordingDetailView: View {
                             .frame(maxWidth: .infinity)
                             .background(Color(.systemGray6))
                             .cornerRadius(8)
-                            .padding(.bottom, 8)
                         }
-                        
+
+                        // Raw/cleaned toggle (only shown when cleaned version exists)
+                        if transcript.cleanedText != nil {
+                            Toggle("Show original", isOn: $showingRawTranscript)
+                                .font(.caption)
+                                .padding(.horizontal)
+                        }
+
+                        // Display content - use raw or cleaned based on toggle
+                        let displayContent = showingRawTranscript ? transcript.rawText : transcript.displayText
+
                         NoteCardView(
                             title: "Transcript",
-                            content: recording.transcript?.text ?? "",
-                            isMarkdown: false,
+                            content: displayContent,
                             canEdit: true,
                             onTap: {
                                 expandedContent = .transcript(editMode: false)
@@ -154,7 +166,7 @@ struct RecordingDetailView: View {
         .onDisappear {
             playbackManager.stopPlayback()
         }
-        .onChange(of: recording.transcript?.text) { _, _ in
+        .onChange(of: recording.transcript?.rawText) { _, _ in
             // Debounce share content updates to reduce overhead on rapid transcript changes
             shareContentDebounceTask?.cancel()
             shareContentDebounceTask = Task {
@@ -178,34 +190,54 @@ struct RecordingDetailView: View {
         .sheet(item: $expandedContent) { contentType in
             switch contentType {
             case .transcript(let editMode):
-                InlineExpandedContentView(
-                    title: "Transcript",
-                    content: $transcriptBinding,
-                    isMarkdown: false,
-                    startInEditMode: editMode,
-                    onContentChange: { newText in
-                        recording.transcript?.text = newText
-                        try? modelContext.save()
-                    }
-                )
-                .onAppear {
-                    transcriptBinding = recording.transcript?.text ?? ""
+                if let transcript = recording.transcript {
+                    InlineExpandedContentView(
+                        title: "Transcript",
+                        initialContent: showingRawTranscript ? transcript.rawText : transcript.displayText,
+                        startInEditMode: editMode,
+                        onSave: { newContent in
+                            // Save transcript content (JSON-encoded AttributedString)
+                            transcript.rawText = newContent
+
+                            guard modelContext.hasChanges else { return }
+                            do {
+                                try modelContext.save()
+                                // Force UI refresh
+                                transcriptUpdateCounter += 1
+                            } catch {
+                                logger.error("Transcript save failed: \(error)")
+                                saveError = "Failed to save transcript"
+                            }
+                        }
+                    )
                 }
             case .note(let note, let editMode):
                 InlineExpandedContentView(
                     title: note.templateName,
-                    content: $noteBinding,
-                    isMarkdown: true,
+                    initialContent: note.content,
                     startInEditMode: editMode,
-                    onContentChange: { newText in
-                        note.processedText = newText
-                        try? modelContext.save()
+                    onSave: { newContent in
+                        // Save note content (JSON-encoded AttributedString)
+                        note.content = newContent
+
+                        guard modelContext.hasChanges else { return }
+                        do {
+                            try modelContext.save()
+                        } catch {
+                            logger.error("Note save failed: \(error)")
+                            saveError = "Failed to save note"
+                        }
                     }
                 )
-                .onAppear {
-                    noteBinding = note.processedText
-                }
             }
+        }
+        .alert("Save Error", isPresented: .init(
+            get: { saveError != nil },
+            set: { if !$0 { saveError = nil } }
+        )) {
+            Button("OK") { saveError = nil }
+        } message: {
+            Text(saveError ?? "")
         }
     } // End of NavigationStack
     } // End of top VStack
@@ -410,7 +442,7 @@ struct RecordingDetailView: View {
                     .foregroundColor(.white)
                     .cornerRadius(8)
                 }
-                .disabled(recording.transcript?.text.isEmpty == true)
+                .disabled(recording.transcript?.rawText.characters.isEmpty == true)
             }
         }
     }
@@ -440,9 +472,9 @@ struct RecordingDetailView: View {
     // MARK: - Helper Methods
     
     private func processTemplate(_ template: Template) async {
-        guard let transcript = recording.transcript?.text else { 
+        guard let transcript = recording.transcript?.plainText else {
             processingError = "No transcript available"
-            return 
+            return
         }
         
         isProcessingNote = true
@@ -534,7 +566,7 @@ struct RecordingDetailView: View {
             
             // Create or update transcript
             if let existingTranscript = recording.transcript {
-                existingTranscript.text = transcriptText
+                existingTranscript.rawText = (try? AttributedString(markdown: transcriptText)) ?? AttributedString(transcriptText)
             } else {
                 let transcript = Transcript(text: transcriptText)
                 recording.transcript = transcript
@@ -587,7 +619,7 @@ struct RecordingDetailView: View {
         Duration: \(Formatters.duration(recording.duration))
 
         Transcript:
-        \(recording.transcript?.text ?? "No transcript available")
+        \(recording.transcript?.plainText ?? "No transcript available")
         """
 
         // Add all processed notes
@@ -596,7 +628,7 @@ struct RecordingDetailView: View {
 
 
             \(note.templateName) (\(Formatters.dateTime(note.createdAt))):
-            \(note.processedText)
+            \(note.plainText)
             """
         }
         
@@ -624,7 +656,7 @@ struct RecordingDetailView: View {
     }
     
     private func regenerateTitle() async {
-        guard let transcript = recording.transcript?.text else { return }
+        guard let transcript = recording.transcript?.plainText else { return }
         
         isGeneratingTitle = true
         
@@ -653,12 +685,11 @@ struct ProcessedNoteCard: View {
     let onDelete: () -> Void
     let onTap: () -> Void
     let onEditTap: () -> Void
-    
+
     var body: some View {
         NoteCardView(
             title: note.templateName,
-            content: note.processedText,
-            isMarkdown: true,
+            content: note.content,  // Uses AttributedString computed property
             canEdit: true,
             createdAt: note.createdAt,
             showDeleteButton: true,

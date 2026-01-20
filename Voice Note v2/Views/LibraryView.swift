@@ -22,7 +22,7 @@ struct LibraryView: View {
         } else {
             return recordingManager.recentRecordings.filter { recording in
                 recording.title.localizedCaseInsensitiveContains(debouncedSearchText) ||
-                recording.transcript?.text.localizedCaseInsensitiveContains(debouncedSearchText) == true
+                recording.transcript?.plainText.localizedCaseInsensitiveContains(debouncedSearchText) == true
             }
         }
     }
@@ -85,7 +85,7 @@ struct RecordingRowContent: View {
                 .foregroundColor(.secondary)
             
             if let transcript = recording.transcript {
-                Text(transcript.text)
+                Text(transcript.displayText)
                     .font(.system(.caption, design: .rounded))
                     .foregroundColor(.secondary)
                     .lineLimit(2)

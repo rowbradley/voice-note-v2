@@ -151,8 +151,9 @@ class TemplateManager {
         }
         
         // One-time cleanup: Remove obsolete templates
-        let obsoleteTemplates = existingTemplates.filter { 
-            $0.name == "Mood Snapshot" || $0.name == "Reply Polish" 
+        let obsoleteTemplates = existingTemplates.filter {
+            $0.name == "Mood Snapshot" || $0.name == "Reply Polish" ||
+            $0.name == "Message Ready" || $0.name == "Flashcard Maker"
         }
         for template in obsoleteTemplates {
             logger.info("Removing obsolete template: \(template.name)")
@@ -162,7 +163,8 @@ class TemplateManager {
         // Create lookup by template name (handle duplicates by taking the first one)
         var existingByName: [String: Template] = [:]
         for template in existingTemplates {
-            let isObsolete = template.name == "Mood Snapshot" || template.name == "Reply Polish"
+            let isObsolete = template.name == "Mood Snapshot" || template.name == "Reply Polish" ||
+                             template.name == "Message Ready" || template.name == "Flashcard Maker"
             if existingByName[template.name] == nil && !isObsolete {
                 existingByName[template.name] = template
             }
@@ -324,9 +326,8 @@ extension TemplateManager {
         let templateDict = Dictionary(uniqueKeysWithValues: templates.map { ($0.name, $0.id.uuidString) })
         
         let defaultOrder = [
-            "Cleanup", "Smart Summary", "Action List", "Message Ready", 
-            "Idea Outline", "Brainstorm", "Key Quotes", "Next Questions", 
-            "Flashcard Maker", "Tone Analysis"
+            "Cleanup", "Smart Summary", "Action List", "Idea Outline",
+            "Brainstorm", "Key Quotes", "Next Questions", "Tone Analysis"
         ]
         
         let orderedIds = defaultOrder.compactMap { templateDict[$0] }

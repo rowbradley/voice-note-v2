@@ -88,110 +88,88 @@ extension Template {
             id: "cleanup",
             name: "Cleanup",
             description: "Remove fillers, fix grammar, and improve readability",
-            prompt: "You are a transcript editor. Your job is to make speech readable.\n\nREMOVE ALL filler words: um, uh, ah, er, like, you know, I mean, actually, basically, right, so yeah, sort of, kind of.\n\nBREAK INTO PARAGRAPHS at natural topic shifts or pauses. Each paragraph should be 2-4 sentences.\n\nALSO FIX:\n- Repeated words and false starts\n- Grammar errors\n- Missing punctuation\n\nKeep the speaker's natural voice. Output clean text only.",
+            prompt: "You are a transcript editor. Clean this transcript for reading. Remove filler words (um, uh, like, you know, I mean, basically). Remove repeated words and false starts. Fix punctuation and capitalization. Preserve the speaker's meaning, intent, subject, tense, names, and all specific details.",
             category: TemplateCategory.productivity.rawValue,
             isPremium: false,
             sortOrder: 1,
-            version: 9
+            version: 15
         ),
-        
+
         TemplateJSON(
             id: "smart-summary",
             name: "Smart Summary",
-            description: "One-sentence overview plus adaptive summary",
-            prompt: "You are a summarizer who captures essence efficiently.\n\nCreate two summaries:\n\n1. **One sentence** (max 30 words): The core message\n2. **Details**: Length matches content complexity\n   - Simple content → one paragraph\n   - Rich content → multiple paragraphs or sections\n\nStart with the one-sentence summary, then a blank line, then details.\n\nUse **bold** for key terms. Use bullet lists sparingly. Add ## headers only when content genuinely needs structure.",
+            description: "One-sentence overview plus key details",
+            prompt: "You are a summarizer. Capture the essence of this transcript efficiently. Identify the core message in one sentence with key terms that could be bolded. Extract exactly 3 key details with topic labels and brief explanations.",
             category: TemplateCategory.productivity.rawValue,
             isPremium: false,
             sortOrder: 2,
-            version: 8
+            version: 14
         ),
-        
+
         TemplateJSON(
             id: "brainstorm",
             name: "Brainstorm",
             description: "Extract ideas and cluster related concepts",
-            prompt: "You are an idea extractor who finds patterns in conversation.\n\nExtract all ideas from this transcript and group by theme.\n\nFor each theme:\n- 2-4 word label\n- Bullet list of ideas (3-8 per group)\n\nEnd with:\n---\n**Summary:** X ideas across Y themes. Most developed: [theme name].\n\nOnly extract what's actually said. Quality over quantity.",
+            prompt: "You are an idea extractor. Find patterns and themes in this conversation. Group related ideas together under theme names. Note when ideas are mentioned multiple times as higher priority.",
             category: TemplateCategory.creative.rawValue,
             isPremium: false,
             sortOrder: 3,
-            version: 8
+            version: 13
         ),
-        
+
         TemplateJSON(
             id: "action-list",
             name: "Action List",
             description: "Extract actionable tasks with owners and deadlines",
-            prompt: "You are a task extractor who spots commitments.\n\nFind all actionable items. Look for: \"I'll...\", \"We need to...\", decisions needing action, follow-ups mentioned.\n\nFormat each task:\n- [ ] **Task name** - Brief description\n  - Owner: [name or Unassigned]\n  - Due: [date or timeframe]\n\nGroup by priority: High, Normal, Low/Future.\n\nOnly include tasks actually mentioned.",
+            prompt: "You are a task extractor. Find commitments and action items in this transcript. For each task, identify who is responsible (or 'Unassigned') and any mentioned deadline (or 'Not specified'). Categorize by priority: high for urgent/immediate, normal for standard, low for can-wait items.",
             category: TemplateCategory.productivity.rawValue,
             isPremium: false,
             sortOrder: 4,
-            version: 8
+            version: 13
         ),
-        
-        TemplateJSON(
-            id: "message-ready",
-            name: "Message Ready",
-            description: "Transform spoken response into polished text reply",
-            prompt: "You are a message writer who transforms speech into text.\n\nConvert this spoken response into a natural written message for text/Slack/email.\n\n- Remove speech patterns (fillers, false starts, repetitions)\n- Keep the message, tone, and personality\n- Format for casual, easy reading\n\nOutput the message as ready to send.",
-            category: TemplateCategory.business.rawValue,
-            isPremium: false,
-            sortOrder: 5,
-            version: 8
-        ),
-        
+
         TemplateJSON(
             id: "idea-outline",
             name: "Idea Outline",
             description: "Transform into hierarchical outline",
-            prompt: "You are an outline creator who finds structure in conversation.\n\nTransform this transcript into a hierarchical outline organized by theme, not chronology.\n\nFormat:\n# [Descriptive title]\n\n## I. First theme\n- Main point\n  - Supporting detail\n\n## II. Second theme\n...\n\nEnd with:\n---\n**Key insights:** 2-3 bullet points",
+            prompt: "You are an outline creator. Find structure in this conversation. Create a title summarizing the main topic. Organize into 2-5 main sections with key points under each. End with a key insight or takeaway.",
             category: TemplateCategory.productivity.rawValue,
             isPremium: false,
-            sortOrder: 6,
-            version: 8
+            sortOrder: 5,
+            version: 13
         ),
-        
+
         TemplateJSON(
             id: "key-quotes",
             name: "Key Quotes",
             description: "Extract impactful and shareable quotes",
-            prompt: "You are a quote curator who finds shareable moments.\n\nExtract 3-5 impactful quotes. For each:\n\n## \"[Quote]\"\n**Context:** Why this matters\n**Use case:** Where to use it\n\nEnd with a numbered list of all quotes for quick copying.\n\nLight editing for clarity is OK. Remove obvious fillers but keep authentic voice.",
+            prompt: "You are a quote curator. Find memorable and impactful moments in this transcript. Extract 2-5 notable quotes, lightly editing for clarity while preserving the speaker's voice. For each quote, explain why it matters.",
             category: TemplateCategory.creative.rawValue,
             isPremium: false,
-            sortOrder: 7,
-            version: 8
+            sortOrder: 6,
+            version: 13
         ),
-        
+
         TemplateJSON(
             id: "next-questions",
             name: "Next Questions",
             description: "Suggest follow-up questions",
-            prompt: "You are a question generator who deepens understanding.\n\nGenerate 5 follow-up questions based on this transcript.\n\nFor each:\n## [Category]: Question?\n**Why it matters:** One sentence\n**Angles to explore:** 2-3 bullet points\n\nCategories: Clarifying, Challenging, Exploratory, Practical, Connective\n\nReference specific content from the transcript.",
+            prompt: "You are a question generator. Based on this transcript, suggest 3-5 thought-provoking follow-up questions that would deepen understanding. For each question, explain why it matters.",
             category: TemplateCategory.education.rawValue,
             isPremium: false,
-            sortOrder: 8,
-            version: 8
+            sortOrder: 7,
+            version: 13
         ),
-        
-        TemplateJSON(
-            id: "flashcard-maker",
-            name: "Flashcard Maker",
-            description: "Convert key concepts into study flashcards",
-            prompt: "You are an educator who makes concepts stick.\n\nCreate 5-10 flashcards from key concepts in this transcript.\n\nFormat each:\n## Card N: [Topic]\n**Q:** Question\n**A:** Answer (2-3 sentences max)\n**Tip:** Memory hook\n\nEnd with a quick review list: Q → A (one line each)\n\nMix difficulty: basic definitions, relationships, applications.",
-            category: TemplateCategory.education.rawValue,
-            isPremium: false,
-            sortOrder: 9,
-            version: 8
-        ),
-        
+
         TemplateJSON(
             id: "tone-analysis",
             name: "Tone Analysis",
             description: "Analyze emotional tone and sentiment",
-            prompt: "You are a sentiment analyst who reads emotional currents.\n\nAnalyze the emotional tone of this transcript.\n\n## Overall: [Sentiment] - [energy level]\n\n**Primary emotions:**\n- Emotion: Intensity and context\n\n**Key observations:** 2-3 bullets on tone shifts or notable patterns\n\n**Summary:** One paragraph assessment.",
+            prompt: "You are a sentiment analyst. Analyze the emotional tone and sentiment in this transcript. Identify the overall tone, energy level, and 2-4 primary emotions with context for where each appears. End with a key observation about the emotional pattern.",
             category: TemplateCategory.personal.rawValue,
             isPremium: false,
-            sortOrder: 10,
-            version: 8
+            sortOrder: 8,
+            version: 13
         )
     ]
 }

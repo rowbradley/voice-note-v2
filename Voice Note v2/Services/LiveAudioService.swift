@@ -38,6 +38,13 @@ final class LiveAudioService {
     private var durationTimer: Timer?
     private var bufferContinuation: AsyncStream<(AVAudioPCMBuffer, AVAudioTime)>.Continuation?
 
+    /// Format when recording started - downstream consumers (file, transcription) expect this
+    private var originalRecordingFormat: AVAudioFormat?
+
+    /// Converts new hardware format → original format when route changes mid-recording
+    /// Thread-safe: AudioFormatConverter is Sendable, safe to access from audio callback thread
+    private var resamplingConverter: AudioFormatConverter?
+
     // Voice detection threshold (see AudioConstants for tuning guidance)
     private let voiceThreshold: Float = AudioConstants.voiceThreshold
 
@@ -92,6 +99,8 @@ final class LiveAudioService {
         // Use the hardware's native format for both tap and file
         // SpeechAnalyzer can handle any reasonable format - bestAvailableAudioFormat is just a preference
         audioFormat = inputFormat
+        // Lock in format for this recording session - file and transcription expect this throughout
+        originalRecordingFormat = inputFormat
         logger.debug("Recording format: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) channels")
 
         // Create output file
@@ -203,6 +212,8 @@ final class LiveAudioService {
         self.audioFile = nil
         self.audioEngine = nil
         recordingStartTime = nil
+        originalRecordingFormat = nil
+        resamplingConverter = nil
         stopDurationTimer()
 
         // Reset state
@@ -253,6 +264,8 @@ final class LiveAudioService {
         audioFile = nil
         audioEngine = nil
         recordingStartTime = nil
+        originalRecordingFormat = nil
+        resamplingConverter = nil
         stopDurationTimer()
 
         // Reset state
@@ -387,21 +400,42 @@ final class LiveAudioService {
 
     /// Creates tap callback closure for audio buffer processing.
     /// Shared between initial recording and engine restarts.
+    ///
+    /// Note: This callback runs on the audio thread, not MainActor.
+    /// AVAudioFile.write(from:) is thread-safe. AudioFormatConverter is Sendable.
+    /// os.Logger is thread-safe - no need to dispatch error logging to MainActor.
     private func makeTapCallback() -> (AVAudioPCMBuffer, AVAudioTime) -> Void {
         return { [weak self] buffer, time in
             guard let self = self else { return }
 
-            // Write to file
-            do {
-                try self.audioFile?.write(from: buffer)
-            } catch {
-                Task { @MainActor in
-                    self.logger.error("Failed to write audio buffer: \(error)")
+            // Resample if format changed after route switch
+            // Converts new hardware format → original recording format
+            let outputBuffer: AVAudioPCMBuffer
+            if let converter = self.resamplingConverter {
+                do {
+                    outputBuffer = try converter.convert(buffer)
+                } catch {
+                    // os.Logger is thread-safe, no dispatch needed
+                    self.logger.error("Resampling failed: \(error)")
+                    return  // Drop this buffer rather than corrupt the file
                 }
+            } else {
+                outputBuffer = buffer
+            }
+
+            // Write to file (single-writer from tap callback is safe;
+            // concurrent writes would NOT be thread-safe)
+            do {
+                try self.audioFile?.write(from: outputBuffer)
+            } catch {
+                // os.Logger is thread-safe, no dispatch needed
+                self.logger.error("Failed to write audio buffer: \(error)")
             }
 
             // Yield to stream for transcription
-            self.bufferContinuation?.yield((buffer, time))
+            // Note: AVAudioTime from original buffer is approximate after resampling
+            // but AnalyzerInput uses simple initializer assuming contiguous audio
+            self.bufferContinuation?.yield((outputBuffer, time))
 
             // Throttle UI updates based on frame rate setting
             let now = CFAbsoluteTimeGetCurrent()
@@ -409,7 +443,7 @@ final class LiveAudioService {
             if now - self.lastUIUpdate >= interval {
                 self.lastUIUpdate = now
                 Task { @MainActor in
-                    self.updateAudioLevel(from: buffer)
+                    self.updateAudioLevel(from: outputBuffer)
                 }
             }
         }
@@ -501,75 +535,68 @@ final class LiveAudioService {
         }
     }
 
-    /// Poll until audio format stabilizes (unchanged for 3 consecutive 100ms checks).
-    /// Bluetooth HFP negotiation can take 500ms+ so fixed delays are unreliable.
-    /// - Parameter timeout: Maximum time to wait for stabilization (default 2 seconds)
-    /// - Returns: The stable AVAudioFormat
-    /// - Throws: `formatStabilizationTimeout` if format doesn't stabilize within timeout
-    private func waitForStableFormat(timeout: TimeInterval = 2.0) async throws -> AVAudioFormat {
-        guard let engine = audioEngine else {
-            throw LiveAudioError.noActiveRecording
-        }
-
-        let startTime = Date()
-        var lastFormat: AVAudioFormat? = nil
-        var stableCount = 0
-
-        while Date().timeIntervalSince(startTime) < timeout {
-            let currentFormat = engine.inputNode.outputFormat(forBus: 0)
-
-            // Skip invalid formats (hardware not ready yet)
-            guard currentFormat.sampleRate > 0 && currentFormat.channelCount > 0 else {
-                try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-                continue
-            }
-
-            // Check if format matches previous reading
-            if let last = lastFormat,
-               last.sampleRate == currentFormat.sampleRate &&
-               last.channelCount == currentFormat.channelCount {
-                stableCount += 1
-                if stableCount >= 3 { // Stable for 300ms (3 × 100ms)
-                    logger.info("Format stabilized after \(String(format: "%.0f", Date().timeIntervalSince(startTime) * 1000))ms: \(currentFormat.sampleRate)Hz, \(currentFormat.channelCount) channels")
-                    return currentFormat
-                }
-            } else {
-                // Format changed - reset counter
-                stableCount = 0
-                lastFormat = currentFormat
-                logger.debug("Format changed to: \(currentFormat.sampleRate)Hz, \(currentFormat.channelCount) channels")
-            }
-
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-        }
-
-        logger.error("Format stabilization timeout after \(timeout)s")
-        throw LiveAudioError.formatStabilizationTimeout
-    }
-
-    /// Restart the audio engine to pick up a new input device while preserving the recording session
+    /// Restart the audio engine to pick up a new input device while preserving the recording session.
+    ///
+    /// IMPORTANT: We must create a NEW AVAudioEngine instance when the hardware changes.
+    /// A stopped engine returns cached format data, not the current hardware format.
+    /// Per Apple docs: "When the audio engine's I/O unit observes a change to the audio
+    /// input or output hardware's channel count or sample rate, the audio engine stops,
+    /// uninitializes itself."
     private func restartAudioEngineForNewInput() async throws {
-        guard let engine = audioEngine, bufferContinuation != nil else {
+        guard let oldEngine = audioEngine, bufferContinuation != nil else {
             throw LiveAudioError.noActiveRecording
         }
 
         // Stop current engine and remove tap
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+        oldEngine.inputNode.removeTap(onBus: 0)
+        oldEngine.stop()
 
-        // Wait for audio format to stabilize after route change
-        // Bluetooth HFP negotiation can take 500ms+ so we poll until stable
-        let inputFormat = try await waitForStableFormat()
+        // Structural safety: converter assignment requires tap callback not running
+        precondition(!oldEngine.isRunning, "Engine must be stopped before restart")
 
+        // Brief delay for iOS audio routing to settle after route change
+        // Bluetooth HFP negotiation needs time to complete
+        try await Task.sleep(for: .milliseconds(150))
+
+        // Create a FRESH engine to get current hardware format
+        // A stopped engine returns stale cached format, causing format mismatch crashes
+        let newEngine = AVAudioEngine()
+        let inputFormat = newEngine.inputNode.outputFormat(forBus: 0)
+
+        // Validate hardware is ready
+        guard inputFormat.sampleRate > 0 && inputFormat.channelCount > 0 else {
+            logger.error("New hardware format invalid: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) channels")
+            throw LiveAudioError.audioSystemNotReady
+        }
+
+        logger.info("New hardware format: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) channels")
+
+        // Update stored references
+        audioEngine = newEngine
         audioFormat = inputFormat
 
-        // Reinstall tap with new format
-        let bufferSize: AVAudioFrameCount = 1024
-        engine.inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat, block: makeTapCallback())
+        // Check if we need to resample to maintain file/stream consistency
+        // Only check sample rate and channel count - these affect file/transcription compatibility
+        // Other format differences (interleaving, alignment) don't require resampling
+        // Thread safety: engine is stopped above, so tap callback is not running during this assignment
+        if let originalFormat = originalRecordingFormat,
+           (inputFormat.sampleRate != originalFormat.sampleRate ||
+            inputFormat.channelCount != originalFormat.channelCount) {
+            // Create converter: new hardware format → original recording format
+            resamplingConverter = AudioFormatConverter(from: inputFormat, to: originalFormat)
+            logger.info("Created resampler: \(inputFormat.sampleRate)Hz → \(originalFormat.sampleRate)Hz")
+        } else {
+            // Formats match (or no original format), no resampling needed
+            resamplingConverter = nil
+        }
 
-        // Restart engine
-        engine.prepare()
-        try engine.start()
+        // Install tap with correct format on new engine
+        let bufferSize: AVAudioFrameCount = 1024
+        newEngine.inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat, block: makeTapCallback())
+
+        // Start new engine
+        newEngine.prepare()
+        try newEngine.start()
     }
 
     // MARK: - Interruption Handling (Background Recording)
@@ -647,7 +674,6 @@ final class LiveAudioService {
 enum LiveAudioError: LocalizedError {
     case noActiveRecording
     case audioSystemNotReady
-    case formatStabilizationTimeout
 
     var errorDescription: String? {
         switch self {
@@ -655,8 +681,6 @@ enum LiveAudioError: LocalizedError {
             return "No active recording found"
         case .audioSystemNotReady:
             return "Audio hardware not ready"
-        case .formatStabilizationTimeout:
-            return "Audio format did not stabilize after route change"
         }
     }
 }

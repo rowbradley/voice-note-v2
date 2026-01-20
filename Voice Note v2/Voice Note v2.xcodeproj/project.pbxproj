@@ -12,8 +12,6 @@
 		4A465DFC92DA0EB5E0ED8854 /* EnvironmentValues+AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AC5FE8407EEDFDC4187656 /* EnvironmentValues+AppSettings.swift */; };
 		4B28842B1B1CD8C690F2F15C /* ToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DBCB765DA149B9F13C129AE /* ToolsView.swift */; };
 		503C7E98E254DB5BAB28312A /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB28060469DC97743AEFABE /* DesignTokens.swift */; };
-		603E5B332E05F91F0066FA8B /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 603E5B322E05F91F0066FA8B /* MarkdownUI */; };
-		603E5B362E05F9530066FA8B /* EnhancedMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603E5B342E05F9530066FA8B /* EnhancedMarkdownView.swift */; };
 		60A704DC2E0254360078652F /* RecordingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CC2E0254360078652F /* RecordingDetailView.swift */; };
 		60A704DD2E0254360078652F /* AudioLevelVisualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C82E0254360078652F /* AudioLevelVisualizer.swift */; };
 		60A704DE2E0254360078652F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CE2E0254360078652F /* SettingsView.swift */; };
@@ -22,6 +20,7 @@
 		60A704E12E0254360078652F /* OnDeviceAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BB2E0254360078652F /* OnDeviceAIService.swift */; };
 		60A704E32E0254360078652F /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704A52E0254360078652F /* Config.swift */; };
 		60A704E42E0254360078652F /* Template.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B32E0254360078652F /* Template.swift */; };
+		4DA76A8D01AA4295AC5F7FBB /* GenerableTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */; };
 		60A704E52E0254360078652F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704A62E0254360078652F /* ContentView.swift */; };
 		60A704E72E0254360078652F /* TemplatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CF2E0254360078652F /* TemplatePickerView.swift */; };
 		60A704E82E0254360078652F /* AudioPlaybackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B92E0254360078652F /* AudioPlaybackManager.swift */; };
@@ -74,7 +73,6 @@
 		321A91BD742ABFB91D345D63 /* AudioFormatConverterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioFormatConverterTests.swift; path = Tests/AudioFormatConverterTests.swift; sourceTree = "<group>"; };
 		47448B8E29E423AA7F80367B /* AudioConstants.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudioConstants.swift; sourceTree = "<group>"; };
 		5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptionService.swift; path = ../Services/LiveTranscriptionService.swift; sourceTree = "<group>"; };
-		603E5B342E05F9530066FA8B /* EnhancedMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedMarkdownView.swift; sourceTree = "<group>"; };
 		60A704702E0250F00078652F /* Voice Note v2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Voice Note v2.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		60A7047D2E0250F20078652F /* Voice Note v2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Voice Note v2Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		60A704872E0250F20078652F /* Voice Note v2UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Voice Note v2UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -83,6 +81,7 @@
 		60A704A62E0254360078652F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		60A704B22E0254360078652F /* Recording.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recording.swift; sourceTree = "<group>"; };
 		60A704B32E0254360078652F /* Template.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Template.swift; sourceTree = "<group>"; };
+		4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerableTemplates.swift; sourceTree = "<group>"; };
 		60A704B72E0254360078652F /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
 		60A704B82E0254360078652F /* AIServiceFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceFactory.swift; sourceTree = "<group>"; };
 		60A704B92E0254360078652F /* AudioPlaybackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackManager.swift; sourceTree = "<group>"; };
@@ -134,7 +133,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				603E5B332E05F91F0066FA8B /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -260,6 +258,7 @@
 		60A704B42E0254360078652F /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */,
 				60A704B22E0254360078652F /* Recording.swift */,
 				60A704B32E0254360078652F /* Template.swift */,
 			);
@@ -337,7 +336,6 @@
 		60A705052E026C4E0078652F /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				603E5B342E05F9530066FA8B /* EnhancedMarkdownView.swift */,
 				60A705022E026C4E0078652F /* CompactAudioPlayer.swift */,
 				A1B2C3D4E5F6071829304B5C /* InlineExpandedContentView.swift */,
 				60A705042E026C4E0078652F /* NoteCardView.swift */,
@@ -469,7 +467,6 @@
 			mainGroup = 60A704672E0250F00078652F;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				603E5B312E05F91F0066FA8B /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 60A704712E0250F00078652F /* Products */;
@@ -514,7 +511,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				60A704DC2E0254360078652F /* RecordingDetailView.swift in Sources */,
-				603E5B362E05F9530066FA8B /* EnhancedMarkdownView.swift in Sources */,
 				60A704DD2E0254360078652F /* AudioLevelVisualizer.swift in Sources */,
 				60A704DE2E0254360078652F /* SettingsView.swift in Sources */,
 				60A704DF2E0254360078652F /* RecordingTimer.swift in Sources */,
@@ -522,6 +518,7 @@
 				60A704E12E0254360078652F /* OnDeviceAIService.swift in Sources */,
 				60A704E32E0254360078652F /* Config.swift in Sources */,
 				60A704E42E0254360078652F /* Template.swift in Sources */,
+				4DA76A8D01AA4295AC5F7FBB /* GenerableTemplates.swift in Sources */,
 				60A704E52E0254360078652F /* ContentView.swift in Sources */,
 				60A704E72E0254360078652F /* TemplatePickerView.swift in Sources */,
 				60A705072E026C4E0078652F /* CompactAudioPlayer.swift in Sources */,
@@ -891,24 +888,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		603E5B312E05F91F0066FA8B /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.4.1;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		603E5B322E05F91F0066FA8B /* MarkdownUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 603E5B312E05F91F0066FA8B /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
-			productName = MarkdownUI;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 60A704682E0250F00078652F /* Project object */;
 }

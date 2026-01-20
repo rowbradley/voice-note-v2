@@ -28,13 +28,12 @@ import Observation
 /// ```swift
 /// let interval = AppSettings.shared.frameRateCFInterval
 /// ```
-/// Note: Not `@MainActor` because:
-/// 1. @Observable provides thread-safe observation
-/// 2. UserDefaults access is thread-safe
-/// 3. Allows EnvironmentKey to reference `shared` without concurrency warnings
-/// SwiftUI will access this on the main thread anyway.
-@Observable
-final class AppSettings: @unchecked Sendable {
+/// Thread safety:
+/// `@MainActor` ensures all access is compiler-verified to be on the main thread.
+/// This is the correct approach since `@Observable` requires main thread observation
+/// and all SwiftUI access happens there anyway. Removes need for `@unchecked Sendable`.
+@MainActor @Observable
+final class AppSettings {
 
     // MARK: - Singleton
 
@@ -58,6 +57,32 @@ final class AppSettings: @unchecked Sendable {
         }
     }
 
+    /// Pro user flag - enables auto-cleanup of transcripts.
+    /// Persisted to UserDefaults automatically via didSet.
+    var isProUser: Bool {
+        didSet {
+            UserDefaults.standard.set(isProUser, forKey: "isProUser")
+        }
+    }
+
+    // MARK: - Audio Visualizer Settings
+
+    /// When false, hides the audio level visualization during recording.
+    /// Some users find animation distracting.
+    var showAudioVisualizer: Bool {
+        didSet {
+            UserDefaults.standard.set(showAudioVisualizer, forKey: "showAudioVisualizer")
+        }
+    }
+
+    /// When true, uses monochrome (gray) dots instead of colored (green/yellow/red).
+    /// Provides subtler appearance while retaining motion feedback.
+    var audioVisualizerMonochrome: Bool {
+        didSet {
+            UserDefaults.standard.set(audioVisualizerMonochrome, forKey: "audioVisualizerMonochrome")
+        }
+    }
+
     // MARK: - Initialization
 
     /// Private initializer ensures singleton pattern.
@@ -66,6 +91,11 @@ final class AppSettings: @unchecked Sendable {
     private init() {
         // Load from UserDefaults. Defaults to false if not set.
         self.lowPowerMode = UserDefaults.standard.lowPowerMode
+        self.isProUser = UserDefaults.standard.bool(forKey: "isProUser")
+
+        // Audio visualizer settings (default: shown, colored)
+        self.showAudioVisualizer = UserDefaults.standard.object(forKey: "showAudioVisualizer") as? Bool ?? true
+        self.audioVisualizerMonochrome = UserDefaults.standard.bool(forKey: "audioVisualizerMonochrome")
     }
 
     // MARK: - Computed Properties (Derived from Settings)

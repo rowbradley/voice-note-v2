@@ -122,7 +122,8 @@ struct RecordingView: View {
             .frame(height: 40)
 
             VStack {
-                if recordingManager.recordingState == .recording {
+                // Show device indicator when recording OR when external device connected in idle
+                if recordingManager.recordingState == .recording || recordingManager.isExternalInputConnected {
                     HStack(spacing: 4) {
                         Image(systemName: microphoneIcon(for: recordingManager.currentInputDevice))
                             .font(.system(size: 10))
@@ -135,6 +136,7 @@ struct RecordingView: View {
             .frame(height: 16)
             .animation(.easeInOut(duration: 0.25), value: recordingManager.recordingState)
             .animation(.easeInOut(duration: 0.25), value: recordingManager.currentInputDevice)
+            .animation(.easeInOut(duration: 0.25), value: recordingManager.isExternalInputConnected)
 
             HStack(alignment: .center, spacing: 24) {
                 AudioLevelVisualizer(
@@ -255,6 +257,14 @@ struct RecordingView: View {
             Button("OK") { }
         } message: {
             Text(recordingManager.failedTranscriptionMessage)
+        }
+        .onAppear {
+            // Update device indicator for pre-record screen
+            recordingManager.updateCurrentAudioDevice()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            // Refresh when app becomes active (user may have connected/disconnected headphones)
+            recordingManager.updateCurrentAudioDevice()
         }
         .onChange(of: recordingManager.lastRecordingId) { oldValue, newValue in
             if let recordingId = newValue,

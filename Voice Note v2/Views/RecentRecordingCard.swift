@@ -63,7 +63,7 @@ struct RecentRecordingCard: View {
     }
 
     private var bodyPreview: String {
-        if let transcript = recording.transcript?.text.trimmingCharacters(in: .whitespacesAndNewlines),
+        if let transcript = recording.transcript?.plainText.trimmingCharacters(in: .whitespacesAndNewlines),
            !transcript.isEmpty {
             return transcript
         }

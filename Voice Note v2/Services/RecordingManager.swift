@@ -90,6 +90,16 @@ final class RecordingManager {
     var isVoiceDetected: Bool {
         isUsingLiveTranscription ? liveAudioService.isVoiceDetected : audioRecordingService.isVoiceDetected
     }
+
+    /// Whether an external input device (headphones, Bluetooth) is connected
+    var isExternalInputConnected: Bool {
+        liveAudioService.isExternalInputConnected
+    }
+
+    /// Update current audio input device (call on view appear to show device indicator)
+    func updateCurrentAudioDevice() {
+        liveAudioService.updateAudioInputDevice()
+    }
     
     private var modelContext: ModelContext?
     private let logger = Logger(subsystem: "com.voicenote", category: "RecordingManager")
@@ -352,6 +362,18 @@ final class RecordingManager {
         let transcript = Transcript(text: transcriptText)
         recording.transcript = transcript
 
+        // Auto-cleanup for Pro users
+        if AppSettings.shared.isProUser {
+            do {
+                let onDeviceAI = OnDeviceAIService()
+                let cleaned = try await onDeviceAI.cleanupTranscript(transcript.rawText)
+                transcript.cleanedText = cleaned
+                logger.info("Auto-cleanup completed: \(String(cleaned.characters).count) chars")
+            } catch {
+                logger.warning("Auto-cleanup failed: \(error)")
+            }
+        }
+
         // Generate title (synchronous - uses first line)
         generateTitle(for: transcript, from: transcriptText, recording: recording)
 
@@ -496,17 +518,17 @@ final class RecordingManager {
             let allRecordings = try modelContext.fetch(descriptor)
             // Log all recordings for debugging
             for (index, recording) in allRecordings.prefix(3).enumerated() {
-                let transcriptInfo = recording.transcript != nil ? "'\(recording.transcript!.text.prefix(30))...'" : "nil"
+                let transcriptInfo = recording.transcript != nil ? "'\(recording.transcript!.plainText.prefix(30))...'" : "nil"
                 logger.debug("Recording \(index): transcript = \(transcriptInfo)")
             }
             
             // Only show recordings with transcripts in recent (successful transcriptions)
-            recentRecordings = allRecordings.filter { $0.transcript != nil && !($0.transcript?.text.isEmpty ?? true) }
+            recentRecordings = allRecordings.filter { $0.transcript != nil && !($0.transcript?.plainText.isEmpty ?? true) }
             logger.info("Loaded \(self.recentRecordings.count) recordings with transcripts (total: \(allRecordings.count))")
             
             // Debug: Show first recent recording
             if let first = recentRecordings.first {
-                logger.debug("First recent recording transcript: '\(first.transcript?.text.prefix(50) ?? "nil")...'")
+                logger.debug("First recent recording transcript: '\(first.transcript?.plainText.prefix(50) ?? "nil")...'")
             }
         } catch {
             logger.error("Failed to load recordings: \(error)")
@@ -550,7 +572,7 @@ final class RecordingManager {
         
         do {
             let templateInfo = TemplateInfo(from: template)
-            let result = try await aiService.processTemplate(templateInfo, transcript: transcript.text)
+            let result = try await aiService.processTemplate(templateInfo, transcript: transcript.plainText)
             
             // Extract processing time based on result type
             let processingTime: TimeInterval

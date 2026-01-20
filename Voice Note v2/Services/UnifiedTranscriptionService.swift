@@ -123,6 +123,9 @@ final class UnifiedTranscriptionService {
         cachedLocale = supportedLocale
         logger.info("Using locale: \(supportedLocale.identifier)")
 
+        // Reserve locale before downloading (per Apple docs)
+        try await AssetInventory.reserve(locale: supportedLocale)
+
         // Create appropriate module
         let modules: [any SpeechModule]
         switch tier {
@@ -183,10 +186,10 @@ final class UnifiedTranscriptionService {
     /// - Parameters:
     ///   - buffers: AsyncStream of audio buffers with timestamps from LiveAudioService
     ///   - format: The audio format of the buffers
-    func startTranscribing(buffers: AsyncStream<(AVAudioPCMBuffer, AVAudioTime)>, format: AVAudioFormat) async {
+    /// - Throws: `UnifiedTranscriptionError.notPrepared` if `prepare()` hasn't been called
+    func startTranscribing(buffers: AsyncStream<(AVAudioPCMBuffer, AVAudioTime)>, format: AVAudioFormat) async throws {
         guard isReady else {
-            logger.error("Service not prepared. Call prepare() first.")
-            return
+            throw UnifiedTranscriptionError.notPrepared
         }
 
         // Reset state
@@ -321,12 +324,12 @@ final class UnifiedTranscriptionService {
                         if self.tier == .premium, let transcriber = self.speechTranscriber {
                             for try await result in transcriber.results {
                                 guard !Task.isCancelled else { break }
-                                self.processResult(result, accumulatedText: &accumulatedText)
+                                self.processTranscriptionResult(text: result.text, isFinal: result.isFinal, accumulatedText: &accumulatedText)
                             }
                         } else if let transcriber = self.dictationTranscriber {
                             for try await result in transcriber.results {
                                 guard !Task.isCancelled else { break }
-                                self.processResult(result, accumulatedText: &accumulatedText)
+                                self.processTranscriptionResult(text: result.text, isFinal: result.isFinal, accumulatedText: &accumulatedText)
                             }
                         }
 
@@ -361,37 +364,24 @@ final class UnifiedTranscriptionService {
         }
     }
 
-    /// Process a transcription result (works for both SpeechTranscriber and DictationTranscriber results)
-    private func processResult(_ result: SpeechTranscriber.Result, accumulatedText: inout String) {
-        let text = String(result.text.characters)
+    /// Process a transcription result (shared logic for both SpeechTranscriber and DictationTranscriber)
+    private func processTranscriptionResult(
+        text: AttributedString,
+        isFinal: Bool,
+        accumulatedText: inout String
+    ) {
+        let textString = String(text.characters)
 
-        if result.isFinal {
-            if !text.isEmpty {
-                accumulatedText += (accumulatedText.isEmpty ? "" : " ") + text
+        if isFinal {
+            if !textString.isEmpty {
+                accumulatedText += (accumulatedText.isEmpty ? "" : " ") + textString
             }
             finalizedText = accumulatedText
             volatileText = ""
-            logger.debug("FINALIZED: '\(text.prefix(30))...'")
+            logger.debug("FINALIZED: '\(textString.prefix(30))...'")
         } else {
-            volatileText = text
-            logger.debug("VOLATILE: '\(text.prefix(30))...'")
-        }
-    }
-
-    /// Process a transcription result from DictationTranscriber
-    private func processResult(_ result: DictationTranscriber.Result, accumulatedText: inout String) {
-        let text = String(result.text.characters)
-
-        if result.isFinal {
-            if !text.isEmpty {
-                accumulatedText += (accumulatedText.isEmpty ? "" : " ") + text
-            }
-            finalizedText = accumulatedText
-            volatileText = ""
-            logger.debug("FINALIZED: '\(text.prefix(30))...'")
-        } else {
-            volatileText = text
-            logger.debug("VOLATILE: '\(text.prefix(30))...'")
+            volatileText = textString
+            logger.debug("VOLATILE: '\(textString.prefix(30))...'")
         }
     }
 
@@ -422,10 +412,13 @@ final class UnifiedTranscriptionService {
 
         logger.info("Final transcript: \(finalTranscript.count) characters")
 
-        // Invalidate analyzer (can't be reused after analyzeSequence)
+        // Invalidate ALL cached components (analyzer can't be reused after analyzeSequence)
         cachedAnalyzer = nil
+        cachedFormat = nil
+        cachedLocale = nil
         speechTranscriber = nil
         dictationTranscriber = nil
+        isReady = false  // Force re-prepare before next session
 
         return finalTranscript
     }
