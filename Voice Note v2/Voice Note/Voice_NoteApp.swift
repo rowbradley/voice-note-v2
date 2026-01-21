@@ -68,6 +68,7 @@ struct Voice_NoteApp: App {
         // Using .menu style to avoid SwiftUI constraint loop bug with .window style
         MenuBarExtra("Voice Note", systemImage: "waveform.circle") {
             MenuBarMenuContent(recordingManager: recordingManager)
+                .environment(AppSettings.shared)
         }
         .menuBarExtraStyle(.menu)
 
@@ -77,36 +78,43 @@ struct Voice_NoteApp: App {
                 LibraryWindowView()
                     .environment(recordingManager)
                     .environment(coordinator)
+                    .environment(AppSettings.shared)
                     .modelContainer(modelContainer)
+                    .onAppear {
+                        WindowManager.setIdentifier(WindowManager.ID.library, forWindowWithTitle: "Library")
+                    }
             } else {
                 Text("Database unavailable")
                     .foregroundColor(.secondary)
             }
         }
 
-        // Floating panel for quick capture (stays on top)
-        // NOTE: .windowLevel is evaluated at Scene init time only.
-        // Changes to floatingPanelStayOnTop setting require app restart to take effect.
-        // This is a SwiftUI limitation - dynamic window level requires NSWindow manipulation.
+        // Floating panel for quick capture
+        // Window level (stay on top) is managed dynamically via WindowManager in FloatingPanelView
         Window("Voice Note", id: "floating-panel") {
             if let modelContainer = modelContainer {
                 FloatingPanelView()
                     .environment(recordingManager)
+                    .environment(AppSettings.shared)
                     .modelContainer(modelContainer)
             }
         }
         .windowStyle(.plain)
-        .windowLevel(AppSettings.shared.floatingPanelStayOnTop ? .floating : .normal)
         .windowResizability(.contentSize)
-        .defaultWindowPlacement { _, _ in
-            // Position near top-right (menu bar area)
-            WindowPlacement(.topTrailing)
+        .defaultWindowPlacement { content, context in
+            // Center horizontally, near top of screen (under menu bar)
+            let displayBounds = context.defaultDisplay.visibleRect
+            let size = content.sizeThatFits(.unspecified)
+            let x = displayBounds.midX - size.width / 2
+            let y = displayBounds.maxY - size.height - 50 // 50pt from top
+            return WindowPlacement(CGPoint(x: x, y: y))
         }
 
         // Settings window
         Settings {
             MacSettingsView()
                 .environment(coordinator)
+                .environment(AppSettings.shared)
         }
     }
 

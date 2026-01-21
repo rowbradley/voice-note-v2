@@ -13,6 +13,7 @@ struct MenuBarMenuContent: View {
     let recordingManager: RecordingManager
 
     @Environment(\.openWindow) private var openWindow
+    @Environment(AppSettings.self) private var appSettings
 
     private var isRecording: Bool {
         recordingManager.recordingState == .recording
@@ -31,15 +32,17 @@ struct MenuBarMenuContent: View {
         Divider()
 
         Button("Open Library...") {
-            openWindow(id: "library")
+            WindowManager.openOrSurface(id: WindowManager.ID.library, using: openWindow)
         }
         .keyboardShortcut("l", modifiers: .command)
 
-        if isRecording {
-            Button("Show Floating Panel") {
-                openWindow(id: "floating-panel")
-            }
+        Button("Toggle Floating Panel") {
+            WindowManager.toggle(id: WindowManager.ID.floatingPanel, using: openWindow)
         }
+
+        Divider()
+
+        Toggle("Keep on Top", isOn: Bindable(appSettings).floatingPanelStayOnTop)
 
         Divider()
 
@@ -65,4 +68,5 @@ struct MenuBarMenuContent: View {
             }
         }
     }
+
 }

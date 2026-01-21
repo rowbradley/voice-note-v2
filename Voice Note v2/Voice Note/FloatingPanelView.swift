@@ -33,13 +33,14 @@ struct FloatingPanelView: View {
     @State private var hasCopied = false
     @State private var lastCopiedRecordingId: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
+    @State private var persistedTranscript: String = ""
 
     /// Derived panel state from recording manager
     private var panelState: PanelState {
         switch recordingManager.recordingState {
         case .idle:
-            // Check if we just completed a recording (have transcript)
-            if !recordingManager.liveTranscript.isEmpty || lastCopiedRecordingId != nil {
+            // Check if we have persisted transcript from completed recording
+            if !persistedTranscript.isEmpty {
                 return .complete
             }
             return .idle
@@ -52,10 +53,9 @@ struct FloatingPanelView: View {
         }
     }
 
-    /// Whether to show the red recording border
-    private var showRecordingBorder: Bool {
-        appSettings.showRecordingBorder &&
-        (panelState == .recording || panelState == .paused)
+    /// Transcript to display - persisted for complete state, live for recording/paused
+    private var displayTranscript: String {
+        panelState == .complete ? persistedTranscript : recordingManager.liveTranscript
     }
 
     var body: some View {
@@ -73,15 +73,31 @@ struct FloatingPanelView: View {
             controlBar
         }
         .frame(width: 420, height: 320)
-        .background(.ultraThickMaterial)
+        .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(recordingBorderOverlay)
         .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 6)
+        .onKeyPress(.escape) {
+            dismiss()
+            return .handled
+        }
+        .onAppear {
+            WindowManager.setIdentifier(WindowManager.ID.floatingPanel, forWindowWithTitle: "Voice Note")
+            WindowManager.setFloating(appSettings.floatingPanelStayOnTop, for: WindowManager.ID.floatingPanel)
+        }
         .onDisappear {
             copyFeedbackTask?.cancel()
         }
+        .onChange(of: appSettings.floatingPanelStayOnTop) { _, newValue in
+            WindowManager.setFloating(newValue, for: WindowManager.ID.floatingPanel)
+        }
         .onChange(of: recordingManager.recordingState) { oldState, newState in
-            if oldState != .recording && newState == .recording {
+            // Persist transcript when recording stops
+            if (oldState == .recording || oldState == .paused) && newState == .idle {
+                persistedTranscript = recordingManager.liveTranscript
+            }
+            // Clear state when starting new recording
+            if newState == .recording && oldState != .paused {
+                persistedTranscript = ""
                 lastCopiedRecordingId = nil
                 hasCopied = false
                 copyFeedbackTask?.cancel()
@@ -89,27 +105,19 @@ struct FloatingPanelView: View {
         }
     }
 
-    // MARK: - Recording Border Overlay
-
-    @ViewBuilder
-    private var recordingBorderOverlay: some View {
-        if showRecordingBorder {
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(
-                    panelState == .paused ? Color.orange.opacity(0.6) : Color.red.opacity(0.8),
-                    lineWidth: 2
-                )
-                .shadow(
-                    color: panelState == .paused ? Color.orange.opacity(0.3) : Color.red.opacity(0.4),
-                    radius: panelState == .recording ? 8 : 4
-                )
-        }
-    }
-
     // MARK: - Header Bar
 
     private var headerBar: some View {
         HStack(spacing: 10) {
+            // Close button (top-left)
+            Button(action: { dismiss() }) {
+                Image(systemName: "xmark")
+                    .font(.body)
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(.secondary)
+            .help("Close")
+
             recordingIndicator
 
             Spacer()
@@ -120,8 +128,10 @@ struct FloatingPanelView: View {
                     .foregroundColor(.secondary)
             }
 
-            Button(action: { openWindow(id: "library") }) {
-                Image(systemName: "books.vertical")
+            Button {
+                WindowManager.openOrSurface(id: WindowManager.ID.library, using: openWindow)
+            } label: {
+                Image(systemName: "rectangle.stack")
                     .font(.body)
             }
             .buttonStyle(.plain)
@@ -218,10 +228,10 @@ struct FloatingPanelView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    if recordingManager.liveTranscript.isEmpty {
+                    if displayTranscript.isEmpty {
                         listeningPlaceholder
                     } else {
-                        Text(recordingManager.liveTranscript)
+                        Text(displayTranscript)
                             .font(.body)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -230,7 +240,7 @@ struct FloatingPanelView: View {
                 }
                 .padding(16)
             }
-            .onChange(of: recordingManager.liveTranscript) { _, _ in
+            .onChange(of: displayTranscript) { _, _ in
                 withAnimation(.easeOut(duration: 0.2)) {
                     proxy.scrollTo("transcript-bottom", anchor: .bottom)
                 }
@@ -240,11 +250,20 @@ struct FloatingPanelView: View {
 
     private var listeningPlaceholder: some View {
         VStack(spacing: 12) {
-            ProgressView()
-                .scaleEffect(0.8)
-            Text("Listening...")
-                .font(.body)
-                .foregroundColor(.secondary)
+            if panelState == .paused {
+                Image(systemName: "pause.circle")
+                    .font(.system(size: 32))
+                    .foregroundColor(.orange)
+                Text("Paused")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+            } else {
+                ProgressView()
+                    .scaleEffect(0.8)
+                Text("Listening...")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -263,113 +282,64 @@ struct FloatingPanelView: View {
     // MARK: - Control Bar
 
     private var controlBar: some View {
-        HStack(spacing: 12) {
-            controlBarContent
+        HStack {
+            // Left button (context-dependent)
+            Group {
+                switch panelState {
+                case .idle:
+                    EmptyView()
+                case .recording:
+                    if recordingManager.isUsingLiveTranscription {
+                        Button(action: pauseRecording) {
+                            Image(systemName: "pause.fill")
+                        }
+                        .help("Pause")
+                    }
+                case .paused:
+                    Button(action: resumeRecording) {
+                        Image(systemName: "play.fill")
+                    }
+                    .help("Resume")
+                case .complete:
+                    Button(action: startNewRecording) {
+                        Image(systemName: "record.circle")
+                    }
+                    .help("New Recording")
+                case .processing:
+                    EmptyView()
+                }
+            }
+            .buttonStyle(.bordered)
+
+            Spacer()
+
+            // Right button (context-dependent)
+            Group {
+                switch panelState {
+                case .idle:
+                    EmptyView()
+                case .recording, .paused:
+                    Button(action: stopRecording) {
+                        Image(systemName: "stop.fill")
+                    }
+                    .help("Stop")
+                case .complete:
+                    Button(action: copyTranscript) {
+                        Image(systemName: hasCopied ? "checkmark" : "doc.on.doc")
+                    }
+                    .help(hasCopied ? "Copied!" : "Copy")
+                    .tint(hasCopied ? .green : nil)
+                    .disabled(displayTranscript.isEmpty)
+                case .processing:
+                    ProgressView()
+                        .scaleEffect(0.8)
+                }
+            }
+            .buttonStyle(.bordered)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-
-    @ViewBuilder
-    private var controlBarContent: some View {
-        switch panelState {
-        case .idle:
-            Spacer()
-            Button(action: startNewRecording) {
-                Label("Record", systemImage: "record.circle")
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
-            Spacer()
-
-        case .recording:
-            recordingControls
-
-        case .paused:
-            pausedControls
-
-        case .processing:
-            Spacer()
-            ProgressView()
-                .scaleEffect(0.7)
-            Spacer()
-
-        case .complete:
-            completeControls
-        }
-    }
-
-    private var recordingControls: some View {
-        Group {
-            if recordingManager.isUsingLiveTranscription {
-                Button(action: pauseRecording) {
-                    Label("Pause", systemImage: "pause.fill")
-                }
-                .buttonStyle(.bordered)
-            }
-
-            Button(action: stopRecording) {
-                Label("Stop", systemImage: "stop.fill")
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
-
-            Spacer()
-
-            copyButton
-        }
-    }
-
-    private var pausedControls: some View {
-        Group {
-            Button(action: resumeRecording) {
-                Label("Resume", systemImage: "play.fill")
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.orange)
-
-            Button(action: stopRecording) {
-                Label("Stop", systemImage: "stop.fill")
-            }
-            .buttonStyle(.bordered)
-
-            Spacer()
-
-            copyButton
-        }
-    }
-
-    private var completeControls: some View {
-        Group {
-            Button(action: startNewRecording) {
-                Image(systemName: "plus")
-            }
-            .buttonStyle(.bordered)
-            .help("New Recording")
-
-            Spacer()
-
-            copyButton
-
-            Button(action: { dismiss() }) {
-                Label("Close", systemImage: "xmark")
-            }
-            .buttonStyle(.bordered)
-        }
-    }
-
-    // MARK: - Copy Button with Feedback
-
-    private var copyButton: some View {
-        Button(action: copyTranscript) {
-            HStack(spacing: 4) {
-                Image(systemName: hasCopied ? "checkmark" : "doc.on.doc")
-                Text(hasCopied ? "Copied!" : "Copy")
-            }
-        }
-        .buttonStyle(.bordered)
-        .tint(hasCopied ? .green : nil)
-        .disabled(recordingManager.liveTranscript.isEmpty)
+        .padding(.vertical, 10)
+        .frame(height: 44)
     }
 
     // MARK: - Actions
@@ -410,7 +380,7 @@ struct FloatingPanelView: View {
     }
 
     private func copyTranscript() {
-        let text = recordingManager.liveTranscript
+        let text = displayTranscript
         guard !text.isEmpty else { return }
 
         // Capture ID immediately before any async work to prevent race condition
@@ -438,6 +408,7 @@ struct FloatingPanelView: View {
             hasCopied = false
         }
     }
+
 }
 
 #Preview {
