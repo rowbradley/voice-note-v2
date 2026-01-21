@@ -16,7 +16,7 @@ struct Voice_Note_v2App: App {
     @State private var databaseError: String?
     @State private var showingDatabaseError = false
     private let logger = Logger(subsystem: "com.voicenote", category: "App")
-    private static let appSchema = Schema([Recording.self, Transcript.self, ProcessedNote.self, Template.self])
+    private static let appSchema = Schema([Recording.self, Transcript.self, ProcessedNote.self, Template.self, Session.self])
 
     init() {
         // Set up SwiftData with proper error handling
@@ -136,10 +136,11 @@ struct Voice_Note_v2App: App {
             .appendingPathComponent("VoiceNote.store")
         
         // Create configuration with the specific URL
+        // CloudKit sync enabled for iCloud backup and cross-device sync
         let modelConfiguration = ModelConfiguration(
             url: storeURL,
             allowsSave: true,
-            cloudKitDatabase: .none
+            cloudKitDatabase: .automatic
         )
         
         do {

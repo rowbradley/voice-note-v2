@@ -17,10 +17,12 @@ final class AudioPlaybackManager {
     
     func setupAudio(url: URL) {
         do {
-            // Configure audio session for playback
+            // Configure audio session for playback (iOS only)
+            #if os(iOS)
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
             try AVAudioSession.sharedInstance().setActive(true)
-            
+            #endif
+
             // Create audio player
             audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer?.prepareToPlay()

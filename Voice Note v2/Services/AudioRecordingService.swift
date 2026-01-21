@@ -41,7 +41,9 @@ final class AudioRecordingService {
     var isVoiceDetected: Bool = false
     
     private var audioRecorder: AVAudioRecorder?
+    #if os(iOS)
     private var recordingSession: AVAudioSession = AVAudioSession.sharedInstance()
+    #endif
     private var recordingStartTime: Date?
     private var levelTimer: Timer?
     private let logger = Logger(subsystem: "com.voicenote", category: "AudioRecording")

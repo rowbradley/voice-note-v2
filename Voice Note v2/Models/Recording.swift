@@ -41,12 +41,56 @@ extension AttributedString {
     }
 }
 
+// MARK: - Device Origin Tracking
+
+/// Identifies which platform created a recording for iCloud sync.
+/// Default `.iOS` ensures existing recordings get correct origin.
+enum SourceDevice: String, Codable {
+    case iOS
+    case macOS
+
+    /// The platform currently running the app
+    static var current: SourceDevice {
+        #if os(macOS)
+        .macOS
+        #else
+        .iOS
+        #endif
+    }
+
+    /// SF Symbol name for this device type
+    var iconName: String {
+        switch self {
+        case .iOS: return "iphone"
+        case .macOS: return "desktopcomputer"
+        }
+    }
+}
+
 @Model
 final class Recording {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var createdAt: Date
     var duration: TimeInterval
     var audioFileName: String
+
+    // Device origin tracking for iCloud sync
+    // Default SourceDevice.iOS for migration compatibility (existing records are from iOS)
+    var sourceDevice: SourceDevice = SourceDevice.iOS
+    var isAudioSynced: Bool = false
+
+    // Quick capture & archiving (macOS floating panel)
+    // Auto-set to true after copying from floating panel; filtered from "All Notes" view
+    var isArchived: Bool = false
+
+    // Retention support (v1 schema, v2 enforcement)
+    // nil = never expires; date set by retention policy when implemented
+    var expiresAt: Date?
+    // User can pin to prevent expiration regardless of retention policy
+    var isPinned: Bool = false
+
+    // Session grouping (v1 schema)
+    @Relationship var session: Session?
 
     @Relationship(deleteRule: .cascade)
     var transcript: Transcript?
@@ -81,6 +125,8 @@ final class Recording {
         self.createdAt = Date()
         self.audioFileName = audioFileName
         self.duration = duration
+        self.sourceDevice = .current  // Platform detected at runtime
+        // Note: isAudioSynced uses property default (= false), no init assignment needed
     }
 }
 
@@ -90,10 +136,18 @@ final class Recording {
 
 @Model
 final class Transcript {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
+
+    // User-generated content encrypted in CloudKit for privacy
+    @Attribute(.allowsCloudEncryption)
     var rawText: AttributedString           // Direct native storage
+
+    @Attribute(.allowsCloudEncryption)
     var cleanedText: AttributedString?      // Pro feature - nil for free users
+
     var aiTitle: String?
+
+    @Attribute(.allowsCloudEncryption)
     var aiSummary: String?
     var createdAt: Date
     var language: String
@@ -130,9 +184,12 @@ final class Transcript {
 
 @Model
 final class ProcessedNote {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var templateId: UUID
     var templateName: String
+
+    // User-generated content encrypted in CloudKit for privacy
+    @Attribute(.allowsCloudEncryption)
     var content: AttributedString           // Direct native storage
     var createdAt: Date
     var processingTime: TimeInterval

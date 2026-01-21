@@ -52,9 +52,11 @@ class DatabaseManager {
     // Create ModelContainer with proper error handling
     func createModelContainer() throws -> ModelContainer {
         let schema = Schema([
-            Recording.self, 
-            Transcript.self, 
-            ProcessedNote.self
+            Recording.self,
+            Transcript.self,
+            ProcessedNote.self,
+            Template.self,
+            Session.self
         ])
         
         // Check if we need to delete incompatible store

@@ -11,6 +11,7 @@
 		3231DBF6B17D479EC16CF64A /* LiveAudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE902CF99F13180690FEDC0D /* LiveAudioService.swift */; };
 		4A465DFC92DA0EB5E0ED8854 /* EnvironmentValues+AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AC5FE8407EEDFDC4187656 /* EnvironmentValues+AppSettings.swift */; };
 		4B28842B1B1CD8C690F2F15C /* ToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DBCB765DA149B9F13C129AE /* ToolsView.swift */; };
+		4DA76A8D01AA4295AC5F7FBB /* GenerableTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */; };
 		503C7E98E254DB5BAB28312A /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB28060469DC97743AEFABE /* DesignTokens.swift */; };
 		60A704DC2E0254360078652F /* RecordingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CC2E0254360078652F /* RecordingDetailView.swift */; };
 		60A704DD2E0254360078652F /* AudioLevelVisualizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C82E0254360078652F /* AudioLevelVisualizer.swift */; };
@@ -20,7 +21,6 @@
 		60A704E12E0254360078652F /* OnDeviceAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BB2E0254360078652F /* OnDeviceAIService.swift */; };
 		60A704E32E0254360078652F /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704A52E0254360078652F /* Config.swift */; };
 		60A704E42E0254360078652F /* Template.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B32E0254360078652F /* Template.swift */; };
-		4DA76A8D01AA4295AC5F7FBB /* GenerableTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */; };
 		60A704E52E0254360078652F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704A62E0254360078652F /* ContentView.swift */; };
 		60A704E72E0254360078652F /* TemplatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704CF2E0254360078652F /* TemplatePickerView.swift */; };
 		60A704E82E0254360078652F /* AudioPlaybackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B92E0254360078652F /* AudioPlaybackManager.swift */; };
@@ -49,9 +49,59 @@
 		D5E6F7081920A3B4C5D6E7F8 /* InlineExpandedContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304B5C /* InlineExpandedContentView.swift */; };
 		E6B9E974547DC31A2896AD17 /* LiveTranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */; };
 		F57DA95FEEB06D9B284AA23D /* UserDefaults+Keys.swift in Sources */ = {isa = PBXBuildFile; fileRef = F638F0978415976913F43CAB /* UserDefaults+Keys.swift */; };
+		IOS0010001000100010001001 /* AudioSessionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC001000100010001A001A1 /* AudioSessionProvider.swift */; };
+		IOS0020002000200020002002 /* iOSAudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC002000200020002A002A2 /* iOSAudioSession.swift */; };
+		IOS0030003000300030003003 /* macOSAudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC003000300030003A003A3 /* macOSAudioSession.swift */; };
+		IOS0040004000400040004004 /* PlatformFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC004000400040004A004A4 /* PlatformFeedback.swift */; };
+		IOS0050005000500050005005 /* PlatformPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC005000500050005A005A5 /* PlatformPasteboard.swift */; };
+		IOS0060006000600060006006 /* RecordingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC006000600060006A006A6 /* RecordingState.swift */; };
+		IOS0070007000700070007007 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = SES0070007000700070007007 /* Session.swift */; };
+		MAC0110011001100110011001 /* GenerableTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */; };
+		MAC0120012001200120012001 /* AudioConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47448B8E29E423AA7F80367B /* AudioConstants.swift */; };
+		MAC0130013001300130013001 /* LiveTranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */; };
+		MAC0140014001400140014001 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704A52E0254360078652F /* Config.swift */; };
+		MAC0160016001600160016001 /* Recording.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B22E0254360078652F /* Recording.swift */; };
+		MAC0170017001700170017001 /* Template.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B32E0254360078652F /* Template.swift */; };
+		MAC0180018001800180018001 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B72E0254360078652F /* AIService.swift */; };
+		MAC0190019001900190019001 /* AIServiceFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B82E0254360078652F /* AIServiceFactory.swift */; };
+		MAC0200020002000200020001 /* AudioPlaybackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704B92E0254360078652F /* AudioPlaybackManager.swift */; };
+		MAC0220022002200220022001 /* OnDeviceAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BB2E0254360078652F /* OnDeviceAIService.swift */; };
+		MAC0230023002300230023001 /* MockAIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704BD2E0254360078652F /* MockAIService.swift */; };
+		MAC0240024002400240024001 /* RecordingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C02E0254360078652F /* RecordingManager.swift */; };
+		MAC0250025002500250025001 /* TemplateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C12E0254360078652F /* TemplateManager.swift */; };
+		MAC0260026002600260026001 /* TranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C22E0254360078652F /* TranscriptionService.swift */; };
+		MAC0270027002700270027001 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C42E0254360078652F /* AppCoordinator.swift */; };
+		MAC0290029002900290029001 /* ShareableAudioFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60A704C62E0254370078652F /* ShareableAudioFile.swift */; };
+		MAC0430043004300430043001 /* AudioFormatConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC01234B17D479EC16CF64A /* AudioFormatConverter.swift */; };
+		MAC0450045004500450045001 /* EnvironmentValues+AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AC5FE8407EEDFDC4187656 /* EnvironmentValues+AppSettings.swift */; };
+		MAC0460046004600460046001 /* LiveAudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE902CF99F13180690FEDC0D /* LiveAudioService.swift */; };
+		MAC0480048004800480048001 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE552A70512C7521CAEE9E50 /* AppSettings.swift */; };
+		MAC0490049004900490049001 /* UserDefaults+Keys.swift in Sources */ = {isa = PBXBuildFile; fileRef = F638F0978415976913F43CAB /* UserDefaults+Keys.swift */; };
+		MAC0500050005000500050001 /* AudioSessionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC001000100010001A001A1 /* AudioSessionProvider.swift */; };
+		MAC0510051005100510051001 /* iOSAudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC002000200020002A002A2 /* iOSAudioSession.swift */; };
+		MAC0520052005200520052001 /* macOSAudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC003000300030003A003A3 /* macOSAudioSession.swift */; };
+		MAC0530053005300530053001 /* PlatformFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC004000400040004A004A4 /* PlatformFeedback.swift */; };
+		MAC0540054005400540054001 /* PlatformPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC005000500050005A005A5 /* PlatformPasteboard.swift */; };
+		MAC0550055005500550055001 /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 60A704A42E0254360078652F /* Config.plist */; };
+		MAC0560056005600560056001 /* RecordingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC006000600060006A006A6 /* RecordingState.swift */; };
+		MAC0570057005700570057001 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = SES0070007000700070007007 /* Session.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		604B3F872F20208200610B2C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 60A704682E0250F00078652F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 604B3F792F20208100610B2C;
+			remoteInfo = "Voice Note";
+		};
+		604B3F912F20208200610B2C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 60A704682E0250F00078652F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 604B3F792F20208100610B2C;
+			remoteInfo = "Voice Note";
+		};
 		60A7047E2E0250F20078652F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 60A704682E0250F00078652F /* Project object */;
@@ -71,8 +121,13 @@
 /* Begin PBXFileReference section */
 		0D5974090B42C757B8FF1A82 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		321A91BD742ABFB91D345D63 /* AudioFormatConverterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioFormatConverterTests.swift; path = Tests/AudioFormatConverterTests.swift; sourceTree = "<group>"; };
+		4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerableTemplates.swift; sourceTree = "<group>"; };
 		47448B8E29E423AA7F80367B /* AudioConstants.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudioConstants.swift; sourceTree = "<group>"; };
 		5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptionService.swift; path = ../Services/LiveTranscriptionService.swift; sourceTree = "<group>"; };
+		604B3F742F201DF300610B2C /* Voice Note v2.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Voice Note v2.entitlements"; sourceTree = "<group>"; };
+		604B3F7A2F20208100610B2C /* Voice Note.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Voice Note.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		604B3F862F20208200610B2C /* Voice NoteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Voice NoteTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		604B3F902F20208200610B2C /* Voice NoteUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Voice NoteUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		60A704702E0250F00078652F /* Voice Note v2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Voice Note v2.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		60A7047D2E0250F20078652F /* Voice Note v2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Voice Note v2Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		60A704872E0250F20078652F /* Voice Note v2UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Voice Note v2UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -81,7 +136,6 @@
 		60A704A62E0254360078652F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		60A704B22E0254360078652F /* Recording.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recording.swift; sourceTree = "<group>"; };
 		60A704B32E0254360078652F /* Template.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Template.swift; sourceTree = "<group>"; };
-		4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerableTemplates.swift; sourceTree = "<group>"; };
 		60A704B72E0254360078652F /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
 		60A704B82E0254360078652F /* AIServiceFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIServiceFactory.swift; sourceTree = "<group>"; };
 		60A704B92E0254360078652F /* AudioPlaybackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackManager.swift; sourceTree = "<group>"; };
@@ -116,19 +170,60 @@
 		CB8AAF16FCD56DEB540FC22A /* LiveTranscriptView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptView.swift; path = ../Views/Components/LiveTranscriptView.swift; sourceTree = "<group>"; };
 		EE552A70512C7521CAEE9E50 /* AppSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		F638F0978415976913F43CAB /* UserDefaults+Keys.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Keys.swift"; sourceTree = "<group>"; };
+		MAC001000100010001A001A1 /* AudioSessionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionProvider.swift; sourceTree = "<group>"; };
+		MAC002000200020002A002A2 /* iOSAudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSAudioSession.swift; sourceTree = "<group>"; };
+		MAC003000300030003A003A3 /* macOSAudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = macOSAudioSession.swift; sourceTree = "<group>"; };
+		MAC004000400040004A004A4 /* PlatformFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformFeedback.swift; sourceTree = "<group>"; };
+		MAC005000500050005A005A5 /* PlatformPasteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformPasteboard.swift; sourceTree = "<group>"; };
+		MAC006000600060006A006A6 /* RecordingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingState.swift; sourceTree = "<group>"; };
+		SES0070007000700070007007 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		604B3F7B2F20208100610B2C /* Voice Note */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Voice Note";
+			sourceTree = "<group>";
+		};
+		604B3F892F20208200610B2C /* Voice NoteTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Voice NoteTests";
+			sourceTree = "<group>";
+		};
+		604B3F932F20208200610B2C /* Voice NoteUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Voice NoteUITests";
+			sourceTree = "<group>";
+		};
 		60A704722E0250F00078652F /* Voice Note v2 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = "Voice Note v2";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		604B3F772F20208100610B2C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		604B3F832F20208200610B2C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		604B3F8D2F20208200610B2C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		60A7046D2E0250F00078652F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -185,6 +280,9 @@
 				60A704D02E0254360078652F /* Views */,
 				60A704D32E0254360078652F /* Voice Note v2 */,
 				60A704722E0250F00078652F /* Voice Note v2 */,
+				604B3F7B2F20208100610B2C /* Voice Note */,
+				604B3F892F20208200610B2C /* Voice NoteTests */,
+				604B3F932F20208200610B2C /* Voice NoteUITests */,
 				60A704712E0250F00078652F /* Products */,
 				32754B80D0A7AFBFD15AE6AD /* Voice Note v2Tests */,
 				89C3CDC63FBE68CFB0977E63 /* Voice Note v2UITests */,
@@ -197,6 +295,9 @@
 				60A704702E0250F00078652F /* Voice Note v2.app */,
 				60A7047D2E0250F20078652F /* Voice Note v2Tests.xctest */,
 				60A704872E0250F20078652F /* Voice Note v2UITests.xctest */,
+				604B3F7A2F20208100610B2C /* Voice Note.app */,
+				604B3F862F20208200610B2C /* Voice NoteTests.xctest */,
+				604B3F902F20208200610B2C /* Voice NoteUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -260,6 +361,8 @@
 			children = (
 				4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */,
 				60A704B22E0254360078652F /* Recording.swift */,
+				MAC006000600060006A006A6 /* RecordingState.swift */,
+				SES0070007000700070007007 /* Session.swift */,
 				60A704B32E0254360078652F /* Template.swift */,
 			);
 			path = Models;
@@ -272,6 +375,9 @@
 				60A704B82E0254360078652F /* AIServiceFactory.swift */,
 				60A704B92E0254360078652F /* AudioPlaybackManager.swift */,
 				60A704BA2E0254360078652F /* AudioRecordingService.swift */,
+				MAC001000100010001A001A1 /* AudioSessionProvider.swift */,
+				MAC002000200020002A002A2 /* iOSAudioSession.swift */,
+				MAC003000300030003A003A3 /* macOSAudioSession.swift */,
 				60A704BD2E0254360078652F /* MockAIService.swift */,
 				60A704BB2E0254360078652F /* OnDeviceAIService.swift */,
 				60A704C02E0254360078652F /* RecordingManager.swift */,
@@ -285,11 +391,13 @@
 			isa = PBXGroup;
 			children = (
 				60A704C42E0254360078652F /* AppCoordinator.swift */,
-				60A704C62E0254370078652F /* ShareableAudioFile.swift */,
-				60A704C52E0254360078652F /* ShareSheet.swift */,
 				EE552A70512C7521CAEE9E50 /* AppSettings.swift */,
 				47448B8E29E423AA7F80367B /* AudioConstants.swift */,
 				B2AC5FE8407EEDFDC4187656 /* EnvironmentValues+AppSettings.swift */,
+				MAC004000400040004A004A4 /* PlatformFeedback.swift */,
+				MAC005000500050005A005A5 /* PlatformPasteboard.swift */,
+				60A704C62E0254370078652F /* ShareableAudioFile.swift */,
+				60A704C52E0254360078652F /* ShareSheet.swift */,
 				F638F0978415976913F43CAB /* UserDefaults+Keys.swift */,
 			);
 			path = Utilities;
@@ -324,6 +432,7 @@
 		60A704D32E0254360078652F /* Voice Note v2 */ = {
 			isa = PBXGroup;
 			children = (
+				604B3F742F201DF300610B2C /* Voice Note v2.entitlements */,
 				60A704D12E0254360078652F /* Assets.xcassets */,
 				60A704D22E0254360078652F /* Voice_Note_v2App.swift */,
 				E548429333CF7D30B09068B7 /* Services */,
@@ -378,6 +487,74 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		604B3F792F20208100610B2C /* Voice Note */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 604B3F982F20208200610B2C /* Build configuration list for PBXNativeTarget "Voice Note" */;
+			buildPhases = (
+				604B3F762F20208100610B2C /* Sources */,
+				604B3F772F20208100610B2C /* Frameworks */,
+				604B3F782F20208100610B2C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				604B3F7B2F20208100610B2C /* Voice Note */,
+			);
+			name = "Voice Note";
+			packageProductDependencies = (
+			);
+			productName = "Voice Note";
+			productReference = 604B3F7A2F20208100610B2C /* Voice Note.app */;
+			productType = "com.apple.product-type.application";
+		};
+		604B3F852F20208200610B2C /* Voice NoteTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 604B3F9B2F20208200610B2C /* Build configuration list for PBXNativeTarget "Voice NoteTests" */;
+			buildPhases = (
+				604B3F822F20208200610B2C /* Sources */,
+				604B3F832F20208200610B2C /* Frameworks */,
+				604B3F842F20208200610B2C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				604B3F882F20208200610B2C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				604B3F892F20208200610B2C /* Voice NoteTests */,
+			);
+			name = "Voice NoteTests";
+			packageProductDependencies = (
+			);
+			productName = "Voice NoteTests";
+			productReference = 604B3F862F20208200610B2C /* Voice NoteTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		604B3F8F2F20208200610B2C /* Voice NoteUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 604B3F9E2F20208200610B2C /* Build configuration list for PBXNativeTarget "Voice NoteUITests" */;
+			buildPhases = (
+				604B3F8C2F20208200610B2C /* Sources */,
+				604B3F8D2F20208200610B2C /* Frameworks */,
+				604B3F8E2F20208200610B2C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				604B3F922F20208200610B2C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				604B3F932F20208200610B2C /* Voice NoteUITests */,
+			);
+			name = "Voice NoteUITests";
+			packageProductDependencies = (
+			);
+			productName = "Voice NoteUITests";
+			productReference = 604B3F902F20208200610B2C /* Voice NoteUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		60A7046F2E0250F00078652F /* Voice Note v2 */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 60A704912E0250F20078652F /* Build configuration list for PBXNativeTarget "Voice Note v2" */;
@@ -441,9 +618,20 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					604B3F792F20208100610B2C = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					604B3F852F20208200610B2C = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 604B3F792F20208100610B2C;
+					};
+					604B3F8F2F20208200610B2C = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 604B3F792F20208100610B2C;
+					};
 					60A7046F2E0250F00078652F = {
 						CreatedOnToolsVersion = 16.4;
 					};
@@ -476,11 +664,36 @@
 				60A7046F2E0250F00078652F /* Voice Note v2 */,
 				60A7047C2E0250F20078652F /* Voice Note v2Tests */,
 				60A704862E0250F20078652F /* Voice Note v2UITests */,
+				604B3F792F20208100610B2C /* Voice Note */,
+				604B3F852F20208200610B2C /* Voice NoteTests */,
+				604B3F8F2F20208200610B2C /* Voice NoteUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		604B3F782F20208100610B2C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				MAC0550055005500550055001 /* Config.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		604B3F842F20208200610B2C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		604B3F8E2F20208200610B2C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		60A7046E2E0250F00078652F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -506,6 +719,55 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		604B3F762F20208100610B2C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				MAC0110011001100110011001 /* GenerableTemplates.swift in Sources */,
+				MAC0120012001200120012001 /* AudioConstants.swift in Sources */,
+				MAC0130013001300130013001 /* LiveTranscriptionService.swift in Sources */,
+				MAC0140014001400140014001 /* Config.swift in Sources */,
+				MAC0160016001600160016001 /* Recording.swift in Sources */,
+				MAC0170017001700170017001 /* Template.swift in Sources */,
+				MAC0180018001800180018001 /* AIService.swift in Sources */,
+				MAC0190019001900190019001 /* AIServiceFactory.swift in Sources */,
+				MAC0200020002000200020001 /* AudioPlaybackManager.swift in Sources */,
+				MAC0220022002200220022001 /* OnDeviceAIService.swift in Sources */,
+				MAC0230023002300230023001 /* MockAIService.swift in Sources */,
+				MAC0240024002400240024001 /* RecordingManager.swift in Sources */,
+				MAC0250025002500250025001 /* TemplateManager.swift in Sources */,
+				MAC0260026002600260026001 /* TranscriptionService.swift in Sources */,
+				MAC0270027002700270027001 /* AppCoordinator.swift in Sources */,
+				MAC0290029002900290029001 /* ShareableAudioFile.swift in Sources */,
+				MAC0430043004300430043001 /* AudioFormatConverter.swift in Sources */,
+				MAC0450045004500450045001 /* EnvironmentValues+AppSettings.swift in Sources */,
+				MAC0460046004600460046001 /* LiveAudioService.swift in Sources */,
+				MAC0480048004800480048001 /* AppSettings.swift in Sources */,
+				MAC0490049004900490049001 /* UserDefaults+Keys.swift in Sources */,
+				MAC0500050005000500050001 /* AudioSessionProvider.swift in Sources */,
+				MAC0510051005100510051001 /* iOSAudioSession.swift in Sources */,
+				MAC0520052005200520052001 /* macOSAudioSession.swift in Sources */,
+				MAC0530053005300530053001 /* PlatformFeedback.swift in Sources */,
+				MAC0540054005400540054001 /* PlatformPasteboard.swift in Sources */,
+				MAC0560056005600560056001 /* RecordingState.swift in Sources */,
+				MAC0570057005700570057001 /* Session.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		604B3F822F20208200610B2C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		604B3F8C2F20208200610B2C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		60A7046C2E0250F00078652F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -550,6 +812,13 @@
 				97D90A74513BE123A29EB843 /* AudioConstants.swift in Sources */,
 				4A465DFC92DA0EB5E0ED8854 /* EnvironmentValues+AppSettings.swift in Sources */,
 				F57DA95FEEB06D9B284AA23D /* UserDefaults+Keys.swift in Sources */,
+				IOS0010001000100010001001 /* AudioSessionProvider.swift in Sources */,
+				IOS0020002000200020002002 /* iOSAudioSession.swift in Sources */,
+				IOS0030003000300030003003 /* macOSAudioSession.swift in Sources */,
+				IOS0040004000400040004004 /* PlatformFeedback.swift in Sources */,
+				IOS0050005000500050005005 /* PlatformPasteboard.swift in Sources */,
+				IOS0060006000600060006006 /* RecordingState.swift in Sources */,
+				IOS0070007000700070007007 /* Session.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -571,6 +840,16 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		604B3F882F20208200610B2C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 604B3F792F20208100610B2C /* Voice Note */;
+			targetProxy = 604B3F872F20208200610B2C /* PBXContainerItemProxy */;
+		};
+		604B3F922F20208200610B2C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 604B3F792F20208100610B2C /* Voice Note */;
+			targetProxy = 604B3F912F20208200610B2C /* PBXContainerItemProxy */;
+		};
 		60A7047F2E0250F20078652F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 60A7046F2E0250F00078652F /* Voice Note v2 */;
@@ -584,6 +863,164 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		604B3F992F20208200610B2C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Voice Note/Voice Note.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Voice Note uses speech recognition to convert your voice recordings into text transcripts. All speech processing happens entirely on your device. Your transcribed text may be sent to our AI service for formatting and organization, but your original audio recordings never leave your device.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-Note";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		604B3F9A2F20208200610B2C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Voice Note/Voice Note.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Voice Note uses speech recognition to convert your voice recordings into text transcripts. All speech processing happens entirely on your device. Your transcribed text may be sent to our AI service for formatting and organization, but your original audio recordings never leave your device.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-Note";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		604B3F9C2F20208200610B2C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-NoteTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Voice Note.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Voice Note";
+			};
+			name = Debug;
+		};
+		604B3F9D2F20208200610B2C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-NoteTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Voice Note.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Voice Note";
+			};
+			name = Release;
+		};
+		604B3F9F2F20208200610B2C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-NoteUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "Voice Note";
+			};
+			name = Debug;
+		};
+		604B3FA02F20208200610B2C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TD5JP98DV6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pixelhi.Voice-NoteUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "Voice Note";
+			};
+			name = Release;
+		};
 		60A7048F2E0250F20078652F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -712,6 +1149,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Voice Note v2/Voice Note v2.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TD5JP98DV6;
@@ -746,6 +1184,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Voice Note v2/Voice Note v2.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TD5JP98DV6;
@@ -850,6 +1289,33 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		604B3F982F20208200610B2C /* Build configuration list for PBXNativeTarget "Voice Note" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				604B3F992F20208200610B2C /* Debug */,
+				604B3F9A2F20208200610B2C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		604B3F9B2F20208200610B2C /* Build configuration list for PBXNativeTarget "Voice NoteTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				604B3F9C2F20208200610B2C /* Debug */,
+				604B3F9D2F20208200610B2C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		604B3F9E2F20208200610B2C /* Build configuration list for PBXNativeTarget "Voice NoteUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				604B3F9F2F20208200610B2C /* Debug */,
+				604B3FA02F20208200610B2C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		60A7046B2E0250F00078652F /* Build configuration list for PBXProject "Voice Note v2" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -887,7 +1353,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = 60A704682E0250F00078652F /* Project object */;
 }

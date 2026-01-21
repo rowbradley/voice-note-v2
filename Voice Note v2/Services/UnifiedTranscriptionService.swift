@@ -267,8 +267,12 @@ final class UnifiedTranscriptionService {
                 // Create converter if needed
                 let needsConversion = format.sampleRate != targetFormat.sampleRate ||
                                       format.commonFormat != targetFormat.commonFormat
-                let converter: AudioFormatConverter? = needsConversion ?
-                    AudioFormatConverter(from: format, to: targetFormat) : nil
+                let converter: AudioFormatConverter?
+                if needsConversion {
+                    converter = try AudioFormatConverter(from: format, to: targetFormat)
+                } else {
+                    converter = nil
+                }
 
                 if needsConversion {
                     self.logger.info("Audio conversion: \(format.sampleRate)Hz → \(targetFormat.sampleRate)Hz")

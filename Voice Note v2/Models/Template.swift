@@ -4,7 +4,7 @@ import SwiftData
 // MARK: - Template Model
 @Model
 final class Template {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var name: String
     var templateDescription: String
     var prompt: String

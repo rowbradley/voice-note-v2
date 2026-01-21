@@ -8,7 +8,7 @@ import os.log
 @MainActor
 @Observable
 final class RecordingManager {
-    var recordingState: RecordButton.RecordingState = .idle
+    var recordingState: RecordingState = .idle
     var statusText = ""
     var recentRecordings: [Recording] = []
     var isTranscribing = false
@@ -37,6 +37,11 @@ final class RecordingManager {
     /// Whether using live transcription for current recording
     private(set) var isUsingLiveTranscription: Bool = false
 
+    /// Whether recording is currently paused (only available with live transcription)
+    var isPaused: Bool {
+        liveAudioService.isPaused
+    }
+
     // MARK: - Services
     //
     // Recording Architecture:
@@ -53,9 +58,12 @@ final class RecordingManager {
     //
     // Decision made in startRecording(): checks liveTranscriptionService.isAvailable
 
+    #if os(iOS)
     /// @deprecated Fallback recording service for when live transcription unavailable.
     /// Uses AVAudioRecorder — cannot stream buffers for real-time transcription.
+    /// iOS-only: macOS always uses LiveAudioService.
     let audioRecordingService = AudioRecordingService()
+    #endif
 
     /// Primary recording service using AVAudioEngine.
     /// Streams audio buffers to SpeechAnalyzer for live transcription.
@@ -71,34 +79,52 @@ final class RecordingManager {
 
     // MARK: - Computed Properties for UI
 
-    /// Audio level - uses live service when available, falls back to legacy
+    /// Audio level - uses live service when available, falls back to legacy (iOS only)
     var currentAudioLevel: Float {
+        #if os(iOS)
         isUsingLiveTranscription ? liveAudioService.currentAudioLevel : audioRecordingService.currentAudioLevel
+        #else
+        liveAudioService.currentAudioLevel
+        #endif
     }
 
-    /// Recording duration - uses live service when available, falls back to legacy
+    /// Recording duration - uses live service when available, falls back to legacy (iOS only)
     var currentDuration: TimeInterval {
+        #if os(iOS)
         isUsingLiveTranscription ? liveAudioService.currentDuration : audioRecordingService.currentDuration
+        #else
+        liveAudioService.currentDuration
+        #endif
     }
 
-    /// Input device name - uses live service when available, falls back to legacy
+    /// Input device name - uses live service when available, falls back to legacy (iOS only)
     var currentInputDevice: String {
+        #if os(iOS)
         isUsingLiveTranscription ? liveAudioService.currentInputDevice : audioRecordingService.currentInputDevice
+        #else
+        liveAudioService.currentInputDevice
+        #endif
     }
 
-    /// Voice detection - uses live service when available, falls back to legacy
+    /// Voice detection - uses live service when available, falls back to legacy (iOS only)
     var isVoiceDetected: Bool {
+        #if os(iOS)
         isUsingLiveTranscription ? liveAudioService.isVoiceDetected : audioRecordingService.isVoiceDetected
+        #else
+        liveAudioService.isVoiceDetected
+        #endif
     }
 
     /// Whether an external input device (headphones, Bluetooth) is connected
     var isExternalInputConnected: Bool {
-        liveAudioService.isExternalInputConnected
+        get async {
+            await liveAudioService.isExternalInputConnected
+        }
     }
 
     /// Update current audio input device (call on view appear to show device indicator)
-    func updateCurrentAudioDevice() {
-        liveAudioService.updateAudioInputDevice()
+    func updateCurrentAudioDevice() async {
+        await liveAudioService.updateAudioInputDevice()
     }
     
     private var modelContext: ModelContext?
@@ -110,7 +136,11 @@ final class RecordingManager {
     /// Returns the destination URL and generated filename
     private func saveAudioFile(from sourceURL: URL) throws -> (destinationURL: URL, fileName: String) {
         let fileName = "\(UUID().uuidString).m4a"
-        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            logger.error("Documents directory unavailable")
+            throw NSError(domain: "RecordingManager", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Documents directory unavailable"])
+        }
         let destinationURL = documentsDir.appendingPathComponent(fileName)
 
         do {
@@ -130,6 +160,12 @@ final class RecordingManager {
             duration: duration
         )
 
+        // Auto-assign to today's session
+        if let session = findOrCreateTodaySession() {
+            recording.session = session
+            logger.debug("Recording assigned to session: \(session.startedAt)")
+        }
+
         modelContext?.insert(recording)
         try modelContext?.save()
 
@@ -140,9 +176,70 @@ final class RecordingManager {
         return recording
     }
 
-    /// Clears the status text after a delay
+    // MARK: - Session Management
+
+    /// Finds or creates a session for today (calendar-day based).
+    /// Sessions group recordings by calendar day using device's local timezone.
+    private func findOrCreateTodaySession() -> Session? {
+        guard let modelContext = modelContext else { return nil }
+
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+
+        // Try to find existing session for today
+        let descriptor = FetchDescriptor<Session>(
+            predicate: #Predicate<Session> { session in
+                session.startedAt == todayStart
+            }
+        )
+
+        do {
+            let existingSessions = try modelContext.fetch(descriptor)
+            if let todaySession = existingSessions.first {
+                return todaySession
+            }
+
+            // No session for today - create one
+            let newSession = Session(date: Date())
+            modelContext.insert(newSession)
+
+            // Close previous day's session if it exists and is still open
+            closePreviousSession(before: todayStart)
+
+            logger.info("Created new session for \(todayStart)")
+            return newSession
+
+        } catch {
+            logger.error("Failed to find/create session: \(error)")
+            return nil
+        }
+    }
+
+    /// Closes any open session from before the given date
+    private func closePreviousSession(before date: Date) {
+        guard let modelContext = modelContext else { return }
+
+        let descriptor = FetchDescriptor<Session>(
+            predicate: #Predicate<Session> { session in
+                session.endedAt == nil && session.startedAt < date
+            }
+        )
+
+        do {
+            let openSessions = try modelContext.fetch(descriptor)
+            for session in openSessions {
+                session.endedAt = date
+                logger.debug("Closed session from \(session.startedAt)")
+            }
+        } catch {
+            logger.error("Failed to close previous sessions: \(error)")
+        }
+    }
+
+    /// Clears the status text after a delay using structured concurrency
     private func clearStatusAfterDelay(_ delay: TimeInterval = 2.0) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(delay))
             self.statusText = ""
         }
     }
@@ -203,20 +300,60 @@ final class RecordingManager {
     func toggleRecording() async {
         logger.debug("Toggle recording called. Current state: \(String(describing: self.recordingState))")
         let oldState = recordingState
-        
+
         switch recordingState {
         case .idle:
             await startRecording()
         case .recording:
             await stopRecording()
+        case .paused:
+            await stopRecording()  // Stop from paused state
         case .processing:
             logger.debug("Currently processing, ignoring tap")
             break // Do nothing while processing
         }
-        
+
         logger.debug("State transition: \(String(describing: oldState)) → \(String(describing: self.recordingState))")
     }
-    
+
+    /// Pause recording (only available with live transcription).
+    ///
+    /// Note: Pause/resume only works with LiveAudioService (AVAudioEngine).
+    /// AVAudioRecorder.pause() has known bugs - see https://developer.apple.com/forums/thread/721749
+    ///
+    /// - Throws: Error if pause fails
+    func pauseRecording() throws {
+        guard isUsingLiveTranscription else {
+            throw RecordingManagerError.pauseNotAvailable
+        }
+        guard recordingState == .recording else {
+            throw RecordingManagerError.invalidState("Cannot pause: not recording")
+        }
+
+        try liveAudioService.pauseRecording()
+        liveTranscriptionService.pauseTranscribing()
+        recordingState = .paused
+        statusText = "Paused"
+        logger.info("Recording paused")
+    }
+
+    /// Resume recording (only available with live transcription)
+    /// - Throws: Error if resume fails
+    func resumeRecording() throws {
+        guard isUsingLiveTranscription else {
+            throw RecordingManagerError.resumeNotAvailable
+        }
+        guard recordingState == .paused else {
+            throw RecordingManagerError.invalidState("Cannot resume: not paused")
+        }
+
+        try liveAudioService.resumeRecording()
+        liveTranscriptionService.resumeTranscribing()
+        recordingState = .recording
+        statusText = "Recording..."
+        logger.info("Recording resumed")
+    }
+
     private func startRecording() async {
         logger.info("🔴 Starting recording...")
         recordingState = .recording
@@ -265,6 +402,7 @@ final class RecordingManager {
             logger.info("🔴 Live transcription NOT available, using legacy path")
         }
 
+        #if os(iOS)
         // Fallback to legacy recording (no live transcription)
         isUsingLiveTranscription = false
         logger.info("🔴 Using LEGACY recording (no live transcription)")
@@ -276,6 +414,12 @@ final class RecordingManager {
             recordingState = .idle
             statusText = "Failed to start recording: \(error.localizedDescription)"
         }
+        #else
+        // macOS: No fallback, live transcription required
+        logger.error("🔴 Recording failed: Live transcription unavailable on macOS")
+        recordingState = .idle
+        statusText = "Recording unavailable - speech recognition required"
+        #endif
     }
     
     private func stopRecording() async {
@@ -289,8 +433,15 @@ final class RecordingManager {
             return
         }
 
-        // Legacy recording flow
+        #if os(iOS)
+        // Legacy recording flow (iOS only)
         await stopLegacyRecording()
+        #else
+        // macOS: Should never reach here - live transcription always used
+        logger.error("Unexpected: stopRecording called without live transcription on macOS")
+        recordingState = .idle
+        statusText = "Recording error"
+        #endif
     }
 
     /// Stop recording when using live transcription (iOS 26+)
@@ -407,7 +558,9 @@ final class RecordingManager {
         }
     }
 
+    #if os(iOS)
     /// Legacy recording flow (fallback when live transcription unavailable)
+    /// iOS-only: macOS always uses LiveAudioService.
     private func stopLegacyRecording() async {
         do {
             let (audioURL, duration) = try await audioRecordingService.stopRecording()
@@ -436,6 +589,7 @@ final class RecordingManager {
     }
 
     /// Transcribes a legacy recording with progress updates
+    /// iOS-only: macOS always uses live transcription.
     private func transcribeLegacyRecording(_ recording: Recording, audioURL: URL) async {
         var progressTask: Task<Void, Never>?
 
@@ -479,30 +633,29 @@ final class RecordingManager {
             try modelContext?.save()
             logger.debug("Saved transcript to database")
 
-            await MainActor.run {
-                isTranscribing = false
-                statusText = "Transcription complete!"
-                loadRecentRecordings()
-            }
+            // Class is @MainActor, no need for MainActor.run wrapper
+            isTranscribing = false
+            statusText = "Transcription complete!"
+            loadRecentRecordings()
 
         } catch {
             progressTask?.cancel()
 
-            await MainActor.run {
-                isTranscribing = false
-                statusText = "Transcription failed"
-                logger.error("Transcription error: \(error)")
+            // Class is @MainActor, no need for MainActor.run wrapper
+            isTranscribing = false
+            statusText = "Transcription failed"
+            logger.error("Transcription error: \(error)")
 
-                failedTranscriptionMessage = "Recording saved to Library. Transcription failed - recording may be too short or contain no audio."
-                showFailedTranscriptionAlert = true
+            failedTranscriptionMessage = "Recording saved to Library. Transcription failed - recording may be too short or contain no audio."
+            showFailedTranscriptionAlert = true
 
-                if let index = recentRecordings.firstIndex(where: { $0.id == recording.id }) {
-                    recentRecordings.remove(at: index)
-                }
+            if let index = recentRecordings.firstIndex(where: { $0.id == recording.id }) {
+                recentRecordings.remove(at: index)
             }
         }
     }
-    
+    #endif
+
     private func loadRecentRecordings() {
         guard let modelContext = modelContext else {
             logger.warning("ModelContext not available yet")
@@ -614,21 +767,74 @@ final class RecordingManager {
                 }
             }
             
-            await MainActor.run {
-                isProcessingTemplate = false
-                statusText = "Template applied!"
-                loadRecentRecordings()
-            }
+            // Class is @MainActor, no need for MainActor.run wrapper
+            isProcessingTemplate = false
+            statusText = "Template applied!"
+            loadRecentRecordings()
 
             clearStatusAfterDelay()
-            
+
         } catch {
-            await MainActor.run {
-                isProcessingTemplate = false
-                statusText = "Template processing failed"
-            }
+            // Class is @MainActor, no need for MainActor.run wrapper
+            isProcessingTemplate = false
+            statusText = "Template processing failed"
             throw error
         }
     }
-    
+
+    // MARK: - Archive Management
+
+    /// Archive a recording by ID.
+    /// Used by FloatingPanelView to auto-archive quick captures after copying.
+    ///
+    /// - Parameter id: The recording ID to archive
+    /// - Returns: true if archiving succeeded, false otherwise
+    @discardableResult
+    func archiveRecording(id: UUID) -> Bool {
+        guard let modelContext = modelContext else {
+            logger.warning("Cannot archive: ModelContext not available")
+            return false
+        }
+
+        let descriptor = FetchDescriptor<Recording>(
+            predicate: #Predicate<Recording> { recording in
+                recording.id == id
+            }
+        )
+
+        do {
+            if let recording = try modelContext.fetch(descriptor).first {
+                recording.isArchived = true
+                try modelContext.save()
+                logger.info("Archived recording: \(id)")
+                return true
+            } else {
+                logger.warning("Recording not found for archiving: \(id)")
+                return false
+            }
+        } catch {
+            logger.error("Failed to archive recording: \(error)")
+            return false
+        }
+    }
+
+}
+
+// MARK: - Errors
+
+enum RecordingManagerError: LocalizedError {
+    case pauseNotAvailable
+    case resumeNotAvailable
+    case invalidState(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .pauseNotAvailable:
+            return "Pause is only available with live transcription"
+        case .resumeNotAvailable:
+            return "Resume is only available with live transcription"
+        case .invalidState(let message):
+            return message
+        }
+    }
 }

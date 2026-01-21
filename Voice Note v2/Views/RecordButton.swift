@@ -2,10 +2,8 @@ import SwiftUI
 import UIKit
 
 struct RecordButton: View {
-    enum RecordingState {
-        case idle, recording, processing
-    }
-    
+    // RecordingState is now defined in Models/RecordingState.swift for cross-platform use
+
     let state: RecordingState
     let action: () -> Void
     

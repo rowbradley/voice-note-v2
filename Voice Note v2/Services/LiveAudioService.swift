@@ -20,6 +20,9 @@ final class LiveAudioService {
     /// Whether recording is currently active
     private(set) var isRecording: Bool = false
 
+    /// Whether recording is currently paused (derived from pauseStartTime)
+    var isPaused: Bool { pauseStartTime != nil }
+
     /// Current input device name
     private(set) var currentInputDevice: String = "Microphone"
 
@@ -32,11 +35,16 @@ final class LiveAudioService {
     // MARK: - Private State
 
     private let logger = Logger(subsystem: "com.voicenote", category: "LiveAudio")
+    private let audioSessionProvider: AudioSessionProvider
     private var audioEngine: AVAudioEngine?
     private var audioFile: AVAudioFile?
     private var recordingStartTime: Date?
     private var durationTimer: Timer?
     private var bufferContinuation: AsyncStream<(AVAudioPCMBuffer, AVAudioTime)>.Continuation?
+
+    /// Tracks pause duration to subtract from total recording time
+    private var totalPausedDuration: TimeInterval = 0.0
+    private var pauseStartTime: Date?
 
     /// Format when recording started - downstream consumers (file, transcription) expect this
     private var originalRecordingFormat: AVAudioFormat?
@@ -53,7 +61,6 @@ final class LiveAudioService {
     private var lastUIUpdate: CFAbsoluteTime = 0
 
     // Interruption handling (for background recording)
-    private var interruptionTask: Task<Void, Never>?
     private(set) var isInterrupted = false
 
     /// Debounce task for route change restarts
@@ -61,8 +68,18 @@ final class LiveAudioService {
 
     // MARK: - Lifecycle
 
-    init() {
+    init(audioSessionProvider: AudioSessionProvider? = nil) {
+        self.audioSessionProvider = audioSessionProvider ?? Self.createDefaultProvider()
         logger.debug("LiveAudioService initialized")
+    }
+
+    /// Creates the platform-appropriate audio session provider
+    private static func createDefaultProvider() -> AudioSessionProvider {
+        #if os(iOS)
+        return iOSAudioSession()
+        #elseif os(macOS)
+        return macOSAudioSession()
+        #endif
     }
 
     // Note: Timer cleanup happens in stopDurationTimer() called from stopRecording()/cancelRecording()
@@ -76,17 +93,18 @@ final class LiveAudioService {
     func startRecording() async throws -> AsyncStream<(AVAudioPCMBuffer, AVAudioTime)> {
         logger.info("Starting live audio recording...")
 
-        // Configure audio session
-        try await configureAudioSession()
+        // Configure and activate audio session via platform provider
+        try await audioSessionProvider.configure()
+        try await audioSessionProvider.activate()
 
         // Update audio input device
-        updateAudioInputDevice()
+        await updateAudioInputDevice()
 
-        // Setup route change notifications
-        setupAudioRouteChangeNotification()
+        // Setup route change notifications via provider
+        setupRouteChangeObserver()
 
-        // Setup interruption monitoring for background recording
-        startInterruptionMonitoring()
+        // Setup interruption monitoring for background recording (iOS only)
+        setupInterruptionObserver()
 
         // Create audio engine
         let engine = AVAudioEngine()
@@ -138,12 +156,12 @@ final class LiveAudioService {
             bufferContinuation?.finish()
             bufferContinuation = nil
 
-            // Remove observer we added earlier
-            NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
-            stopInterruptionMonitoring()
+            // Stop observers we added earlier
+            audioSessionProvider.stopObservingRouteChanges()
+            audioSessionProvider.stopObservingInterruptions()
 
             // Deactivate audio session
-            try? AVAudioSession.sharedInstance().setActive(false)
+            try? audioSessionProvider.deactivate()
 
             throw error
         }
@@ -166,7 +184,12 @@ final class LiveAudioService {
             throw LiveAudioError.noActiveRecording
         }
 
-        // Calculate duration before clearing state
+        // If paused when stop is called, account for that pause duration
+        if isPaused, let pauseStart = pauseStartTime {
+            totalPausedDuration += Date().timeIntervalSince(pauseStart)
+        }
+
+        // Calculate duration before clearing state (already accounts for pauses)
         let duration = currentRecordingDuration
 
         // Stop the engine and remove tap
@@ -216,27 +239,22 @@ final class LiveAudioService {
         resamplingConverter = nil
         stopDurationTimer()
 
-        // Reset state
-        isRecording = false
-        currentAudioLevel = 0.0
-        currentDuration = 0.0
-        isVoiceDetected = false
+        // Reset recording state
+        resetRecordingState()
 
         // Cancel any pending route restart debounce
         routeRestartDebounceTask?.cancel()
         routeRestartDebounceTask = nil
 
-        // Remove route change notifications
-        NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
-
-        // Stop interruption monitoring
-        stopInterruptionMonitoring()
+        // Stop route change and interruption observers
+        audioSessionProvider.stopObservingRouteChanges()
+        audioSessionProvider.stopObservingInterruptions()
         isInterrupted = false
 
         // Deactivate audio session
-        try AVAudioSession.sharedInstance().setActive(false)
+        try audioSessionProvider.deactivate()
 
-        logger.info("Live audio recording stopped. Duration: \(duration)s, File: \(fileURL)")
+        logger.debug("Live audio recording stopped. Duration: \(duration)s")
 
         return (fileURL, duration)
     }
@@ -268,25 +286,77 @@ final class LiveAudioService {
         resamplingConverter = nil
         stopDurationTimer()
 
-        // Reset state
-        isRecording = false
-        currentAudioLevel = 0.0
-        currentDuration = 0.0
-        isVoiceDetected = false
+        // Reset recording state
+        resetRecordingState()
 
         // Cancel any pending route restart debounce
         routeRestartDebounceTask?.cancel()
         routeRestartDebounceTask = nil
 
-        // Remove notifications
-        NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
-
-        // Stop interruption monitoring
-        stopInterruptionMonitoring()
+        // Stop route change and interruption observers
+        audioSessionProvider.stopObservingRouteChanges()
+        audioSessionProvider.stopObservingInterruptions()
         isInterrupted = false
 
         // Deactivate audio session
-        try? AVAudioSession.sharedInstance().setActive(false)
+        try? audioSessionProvider.deactivate()
+
+        logger.debug("Live audio recording cancelled")
+    }
+
+    /// Resets observable recording state to initial values.
+    /// Extracted to avoid duplication between stopRecording() and cancelRecording().
+    private func resetRecordingState() {
+        isRecording = false
+        totalPausedDuration = 0.0
+        pauseStartTime = nil  // This sets isPaused to false via computed property
+        currentAudioLevel = 0.0
+        currentDuration = 0.0
+        isVoiceDetected = false
+    }
+
+    /// Pause recording - pauses AVAudioEngine and stops buffer streaming.
+    /// Duration timer continues but pause time is tracked and subtracted.
+    /// Only works with LiveAudioService (not AVAudioRecorder which has known bugs).
+    /// - Throws: `LiveAudioError.noActiveRecording` if not recording or already paused
+    func pauseRecording() throws {
+        guard isRecording, !isPaused, let engine = audioEngine else {
+            throw LiveAudioError.cannotPause
+        }
+
+        // Pause the audio engine - stops tap callbacks
+        engine.pause()
+
+        // Track pause start time (this sets isPaused to true via computed property)
+        pauseStartTime = Date()
+
+        // Zero out audio level while paused
+        currentAudioLevel = 0.0
+        isVoiceDetected = false
+
+        logger.debug("Audio engine paused")
+    }
+
+    /// Resume recording after pause.
+    /// Restarts AVAudioEngine and continues buffer streaming.
+    /// - Throws: `LiveAudioError.cannotResume` if not paused, or engine start fails
+    func resumeRecording() throws {
+        guard isRecording, isPaused, let engine = audioEngine else {
+            throw LiveAudioError.cannotResume
+        }
+
+        // Calculate pause duration and add to total
+        if let pauseStart = pauseStartTime {
+            totalPausedDuration += Date().timeIntervalSince(pauseStart)
+        }
+
+        // Restart the audio engine (clears pauseStartTime after to handle throw)
+        try engine.start()
+
+        // Clear pause state (this sets isPaused to false via computed property)
+        pauseStartTime = nil
+
+        logger.debug("Audio engine resumed")
     }
 
     /// Pre-warm audio hardware at app launch to prevent first-recording failure.
@@ -295,10 +365,8 @@ final class LiveAudioService {
     func prewarmAudioSystem() async throws {
         logger.debug("Pre-warming audio system...")
 
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default,
-                                options: [.defaultToSpeaker, .allowBluetoothHFP])
-        try session.setActive(true)
+        try await audioSessionProvider.configure()
+        try await audioSessionProvider.activate()
 
         // Force hardware singleton creation
         let engine = AVAudioEngine()
@@ -307,7 +375,7 @@ final class LiveAudioService {
         // Validate hardware is ready (per Apple docs)
         guard format.sampleRate > 0 && format.channelCount > 0 else {
             logger.warning("Audio hardware not ready: \(format.sampleRate)Hz, \(format.channelCount) channels")
-            try session.setActive(false)
+            try? audioSessionProvider.deactivate()
             throw LiveAudioError.audioSystemNotReady
         }
 
@@ -323,24 +391,16 @@ final class LiveAudioService {
 
     private var currentRecordingDuration: TimeInterval {
         guard let startTime = recordingStartTime else { return 0 }
-        return Date().timeIntervalSince(startTime)
-    }
 
-    private func configureAudioSession() async throws {
-        let session = AVAudioSession.sharedInstance()
+        let elapsed = Date().timeIntervalSince(startTime)
+        var pauseAdjustment = totalPausedDuration
 
-        // Configure for recording with playback capability
-        // .allowBluetoothHFP enables Bluetooth input - iOS routes automatically
-        // NOTE: setPreferredInput() breaks AVAudioEngine tap callbacks, don't use it
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
-        try session.setActive(true)
+        // Add current pause duration if paused (pauseStartTime is non-nil when paused)
+        if let pauseStart = pauseStartTime {
+            pauseAdjustment += Date().timeIntervalSince(pauseStart)
+        }
 
-        // Wait for Bluetooth HFP negotiation to complete
-        // When AirPods are connected, iOS needs time to switch from A2DP (output only) to HFP (bidirectional)
-        // Without this delay, we may capture the wrong input format (built-in mic instead of Bluetooth)
-        try await Task.sleep(nanoseconds: AudioConstants.Timing.hfpNegotiation)
-
-        logger.debug("Audio session configured, current route: \(session.currentRoute.inputs.first?.portType.rawValue ?? "none")")
+        return max(0, elapsed - pauseAdjustment)
     }
 
     private func createRecordingURL() throws -> URL {
@@ -451,86 +511,52 @@ final class LiveAudioService {
 
     // MARK: - Audio Input Device Detection
 
-    /// Update current input device from audio session route.
+    /// Update current input device from audio session provider.
     /// Called during recording and can be called in idle state to show device indicator.
-    func updateAudioInputDevice() {
-        let currentRoute = AVAudioSession.sharedInstance().currentRoute
-        if let input = currentRoute.inputs.first {
-            currentInputDevice = getReadableDeviceName(for: input)
-        } else {
-            currentInputDevice = "Microphone"
-        }
+    func updateAudioInputDevice() async {
+        currentInputDevice = await audioSessionProvider.currentInputDevice
     }
 
     /// Whether the current input is an external device (headphones, Bluetooth, etc.)
     var isExternalInputConnected: Bool {
-        let route = AVAudioSession.sharedInstance().currentRoute
-        guard let input = route.inputs.first else { return false }
-        return input.portType != .builtInMic
-    }
-
-    private func getReadableDeviceName(for input: AVAudioSessionPortDescription) -> String {
-        switch input.portType {
-        case .builtInMic:
-            return "Built-in Microphone"
-        case .bluetoothA2DP, .bluetoothLE, .bluetoothHFP:
-            let deviceName = input.portName.isEmpty ? "Bluetooth" : input.portName
-            return deviceName
-        case .headsetMic:
-            return "Wired Headset"
-        case .airPlay:
-            return "AirPlay Device"
-        case .carAudio:
-            return "Car Audio"
-        case .usbAudio:
-            return "USB Microphone"
-        default:
-            return input.portName.isEmpty ? "External Microphone" : input.portName
+        get async {
+            await audioSessionProvider.isExternalInputConnected
         }
     }
 
-    private func setupAudioRouteChangeNotification() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleRouteChange),
-            name: AVAudioSession.routeChangeNotification,
-            object: AVAudioSession.sharedInstance()
-        )
+    // MARK: - Route Change Handling
+
+    private func setupRouteChangeObserver() {
+        audioSessionProvider.observeRouteChanges { [weak self] in
+            Task { @MainActor in
+                await self?.handleRouteChange()
+            }
+        }
     }
 
-    @objc private func handleRouteChange(notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
-              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+    private func handleRouteChange() async {
+        let oldDevice = currentInputDevice
+        await updateAudioInputDevice()
+
+        // If recording is active and input device changed, restart engine to use new input
+        // This handles: AirPods connecting/disconnecting, wired headset plugging in, etc.
+        guard isRecording, currentInputDevice != oldDevice else {
             return
         }
 
-        Task { @MainActor in
-            let oldDevice = currentInputDevice
-            updateAudioInputDevice()
+        logger.info("Audio input changed during recording: \(oldDevice) → \(self.currentInputDevice). Scheduling restart...")
 
-            // If recording is active and input device changed, restart engine to use new input
-            // This handles: AirPods connecting/disconnecting, wired headset plugging in, etc.
-            guard isRecording,
-                  reason == .newDeviceAvailable || reason == .oldDeviceUnavailable || reason == .routeConfigurationChange,
-                  currentInputDevice != oldDevice else {
-                return
-            }
+        // Debounce rapid route changes (e.g., user rapidly plugging/unplugging)
+        routeRestartDebounceTask?.cancel()
+        routeRestartDebounceTask = Task {
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
 
-            logger.info("Audio input changed during recording: \(oldDevice) → \(self.currentInputDevice). Scheduling restart...")
-
-            // Debounce rapid route changes (e.g., user rapidly plugging/unplugging)
-            routeRestartDebounceTask?.cancel()
-            routeRestartDebounceTask = Task {
-                try? await Task.sleep(nanoseconds: AudioConstants.Timing.routeDebounce)
-                guard !Task.isCancelled else { return }
-
-                do {
-                    try await restartAudioEngineForNewInput()
-                    logger.info("Audio engine restarted successfully for new input")
-                } catch {
-                    logger.error("Failed to restart audio engine: \(error)")
-                }
+            do {
+                try await restartAudioEngineForNewInput()
+                logger.info("Audio engine restarted successfully for new input")
+            } catch {
+                logger.error("Failed to restart audio engine: \(error)")
             }
         }
     }
@@ -583,7 +609,7 @@ final class LiveAudioService {
            (inputFormat.sampleRate != originalFormat.sampleRate ||
             inputFormat.channelCount != originalFormat.channelCount) {
             // Create converter: new hardware format → original recording format
-            resamplingConverter = AudioFormatConverter(from: inputFormat, to: originalFormat)
+            resamplingConverter = try AudioFormatConverter(from: inputFormat, to: originalFormat)
             logger.info("Created resampler: \(inputFormat.sampleRate)Hz → \(originalFormat.sampleRate)Hz")
         } else {
             // Formats match (or no original format), no resampling needed
@@ -601,71 +627,32 @@ final class LiveAudioService {
 
     // MARK: - Interruption Handling (Background Recording)
 
-    private func startInterruptionMonitoring() {
-        interruptionTask = Task { [weak self] in
-            let notifications = NotificationCenter.default.notifications(
-                named: AVAudioSession.interruptionNotification
-            )
-            for await notification in notifications {
-                await self?.handleInterruption(notification)
-            }
-        }
-    }
-
-    private func stopInterruptionMonitoring() {
-        interruptionTask?.cancel()
-        interruptionTask = nil
-    }
-
-    private func handleInterruption(_ notification: Notification) async {
-        guard let userInfo = notification.userInfo,
-              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
-            return
-        }
-
-        switch type {
-        case .began:
-            isInterrupted = true
-            // Log reason (iOS 14.5+)
-            if let reasonValue = userInfo[AVAudioSessionInterruptionReasonKey] as? UInt,
-               let reason = AVAudioSession.InterruptionReason(rawValue: reasonValue) {
-                switch reason {
-                case .appWasSuspended:
-                    logger.info("Audio interrupted - app was suspended")
-                case .builtInMicMuted:
-                    logger.info("Audio interrupted - mic muted (iPad)")
-                case .routeDisconnected:
-                    logger.info("Audio interrupted - route disconnected")
-                default:
-                    logger.info("Audio interrupted - another app took focus")
+    private func setupInterruptionObserver() {
+        audioSessionProvider.observeInterruptions(
+            began: { [weak self] in
+                Task { @MainActor in
+                    self?.isInterrupted = true
+                    self?.logger.info("Audio interrupted")
+                }
+            },
+            ended: { [weak self] shouldResume in
+                Task { @MainActor in
+                    guard let self = self else { return }
+                    if shouldResume {
+                        do {
+                            try await self.audioSessionProvider.activate()
+                            try self.audioEngine?.start()
+                            self.isInterrupted = false
+                            self.logger.info("Audio resumed after interruption")
+                        } catch {
+                            self.logger.error("Failed to resume audio: \(error)")
+                        }
+                    } else {
+                        self.logger.info("Interruption ended but shouldResume=false")
+                    }
                 }
             }
-
-        case .ended:
-            guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else {
-                return
-            }
-            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-
-            if options.contains(.shouldResume) {
-                do {
-                    // Must reactivate session before restarting engine
-                    try AVAudioSession.sharedInstance().setActive(true)
-                    try audioEngine?.start()
-                    isInterrupted = false
-                    logger.info("Audio resumed after interruption")
-                } catch {
-                    logger.error("Failed to resume audio: \(error)")
-                }
-            } else {
-                logger.info("Interruption ended but shouldResume=false")
-                // Recording stays paused - user must manually resume
-            }
-
-        @unknown default:
-            break
-        }
+        )
     }
 }
 
@@ -674,6 +661,8 @@ final class LiveAudioService {
 enum LiveAudioError: LocalizedError {
     case noActiveRecording
     case audioSystemNotReady
+    case cannotPause
+    case cannotResume
 
     var errorDescription: String? {
         switch self {
@@ -681,6 +670,10 @@ enum LiveAudioError: LocalizedError {
             return "No active recording found"
         case .audioSystemNotReady:
             return "Audio hardware not ready"
+        case .cannotPause:
+            return "Cannot pause: not recording or already paused"
+        case .cannotResume:
+            return "Cannot resume: not paused or no active recording"
         }
     }
 }

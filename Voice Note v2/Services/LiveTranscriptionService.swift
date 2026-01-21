@@ -36,6 +36,9 @@ final class LiveTranscriptionService {
     /// Whether transcription is currently active
     private(set) var isTranscribing: Bool = false
 
+    /// Whether transcription is paused (audio buffers stop flowing when paused)
+    private(set) var isPaused: Bool = false
+
     // MARK: - Private State
 
     private let logger = Logger(subsystem: "com.voicenote", category: "LiveTranscription")
@@ -327,8 +330,12 @@ final class LiveTranscriptionService {
                 // Create converter if formats differ
                 let needsConversion = format.sampleRate != targetFormat.sampleRate ||
                                       format.commonFormat != targetFormat.commonFormat
-                let converter: AudioFormatConverter? = needsConversion ?
-                    AudioFormatConverter(from: format, to: targetFormat) : nil
+                let converter: AudioFormatConverter?
+                if needsConversion {
+                    converter = try AudioFormatConverter(from: format, to: targetFormat)
+                } else {
+                    converter = nil
+                }
 
                 if needsConversion {
                     self.logger.info("🎤 Audio conversion enabled: \(format.sampleRate)Hz \(format.commonFormat.rawValue) → \(targetFormat.sampleRate)Hz \(targetFormat.commonFormat.rawValue)")
@@ -482,6 +489,22 @@ final class LiveTranscriptionService {
         }
     }
 
+    /// Pause transcription (audio buffers stop flowing when LiveAudioService is paused)
+    /// This primarily tracks state - actual pause happens at audio level
+    func pauseTranscribing() {
+        guard isTranscribing, !isPaused else { return }
+        isPaused = true
+        logger.info("Live transcription paused")
+    }
+
+    /// Resume transcription (audio buffers resume when LiveAudioService resumes)
+    /// This primarily tracks state - actual resume happens at audio level
+    func resumeTranscribing() {
+        guard isTranscribing, isPaused else { return }
+        isPaused = false
+        logger.info("Live transcription resumed")
+    }
+
     /// Stop transcribing and return the final transcript
     /// - Returns: The complete finalized transcript text
     func stopTranscribing() async -> String {
@@ -502,6 +525,7 @@ final class LiveTranscriptionService {
         resultsTask = nil
 
         isTranscribing = false
+        isPaused = false
 
         // Build final transcript
         let finalTranscript = finalizedText
@@ -538,6 +562,7 @@ final class LiveTranscriptionService {
         volatileText = ""
         finalizedText = ""
         isTranscribing = false
+        isPaused = false
     }
 }
 

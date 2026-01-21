@@ -39,7 +39,7 @@ class AudioFormatConverterTests: XCTestCase {
         )
 
         // When: We convert the buffer
-        let converter = AudioFormatConverter(from: sourceFormat, to: targetFormat)
+        let converter = try AudioFormatConverter(from: sourceFormat, to: targetFormat)
         let convertedBuffer = try converter.convert(sourceBuffer)
 
         // Then: The output buffer should have the correct format
@@ -68,7 +68,7 @@ class AudioFormatConverterTests: XCTestCase {
         sourceBuffer.frameLength = 0
 
         // When: We convert the empty buffer
-        let converter = AudioFormatConverter(from: sourceFormat, to: targetFormat)
+        let converter = try AudioFormatConverter(from: sourceFormat, to: targetFormat)
         let convertedBuffer = try converter.convert(sourceBuffer)
 
         // Then: Output should also be empty
@@ -78,7 +78,7 @@ class AudioFormatConverterTests: XCTestCase {
     // MARK: - Test: Converter can be reused for multiple buffers
 
     func testConverterReusability() throws {
-        let converter = AudioFormatConverter(from: sourceFormat, to: targetFormat)
+        let converter = try AudioFormatConverter(from: sourceFormat, to: targetFormat)
 
         // Convert multiple buffers sequentially
         for iteration in 1...3 {

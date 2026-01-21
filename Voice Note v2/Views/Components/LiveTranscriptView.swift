@@ -7,7 +7,6 @@ struct LiveTranscriptView: View {
     let isRecording: Bool
     let duration: TimeInterval
 
-    @State private var isPulsing = false
     @State private var scrollDebounceTask: Task<Void, Never>?
 
     var body: some View {
@@ -77,21 +76,16 @@ struct LiveTranscriptView: View {
         .clipShape(RoundedRectangle(cornerRadius: Radius.lg))
         .overlay(
             RoundedRectangle(cornerRadius: Radius.lg)
-                .stroke(isRecording ? Color.red : Color(.systemGray4), lineWidth: isRecording ? 2 : 1)
-                .opacity(isRecording ? (isPulsing ? 0.4 : 0.8) : 1.0)
+                .stroke(isRecording ? Color.red : Color(.systemGray4),
+                        lineWidth: isRecording ? 2 : 1)
+                .phaseAnimator([false, true]) { content, phase in
+                    content.opacity(
+                        isRecording ? (phase ? 0.4 : 0.8) : 1.0
+                    )
+                } animation: { phase in
+                    phase ? .easeInOut(duration: 1.0) : .easeOut(duration: 0.3)
+                }
         )
-        .onAppear {
-            if isRecording {
-                startPulsing()
-            }
-        }
-        .onChange(of: isRecording) { _, newValue in
-            if newValue {
-                startPulsing()
-            } else {
-                stopPulsing()
-            }
-        }
     }
 
     // MARK: - Subviews
@@ -128,7 +122,9 @@ struct LiveTranscriptView: View {
                 Circle()
                     .fill(Color.red)
                     .frame(width: 8, height: 8)
-                    .opacity(isPulsing ? 0.5 : 1.0)
+                    .phaseAnimator([false, true]) { content, phase in
+                        content.opacity(phase ? 0.5 : 1.0)
+                    } animation: { _ in .easeInOut(duration: 1.0) }
 
                 Text("REC")
                     .font(.system(.caption, design: .rounded, weight: .bold))
@@ -147,19 +143,6 @@ struct LiveTranscriptView: View {
         .background(Color(.systemGray6))
     }
 
-    // MARK: - Helpers
-
-    private func startPulsing() {
-        withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-            isPulsing = true
-        }
-    }
-
-    private func stopPulsing() {
-        withAnimation(.easeOut(duration: 0.3)) {
-            isPulsing = false
-        }
-    }
 }
 
 /// Controls view displayed below the transcript during live recording

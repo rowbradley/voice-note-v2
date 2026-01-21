@@ -2,6 +2,10 @@ import SwiftUI
 import AVFoundation
 import Observation
 
+#if canImport(AppKit)
+import AppKit
+#endif
+
 @MainActor
 @Observable
 final class AppCoordinator {
@@ -49,10 +53,17 @@ final class AppCoordinator {
     }
     
     func openSettings() {
+        #if canImport(UIKit) && !os(macOS)
         guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
             return
         }
         UIApplication.shared.open(settingsURL)
+        #elseif canImport(AppKit)
+        // macOS: Open System Settings to Privacy & Security > Microphone
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+            NSWorkspace.shared.open(url)
+        }
+        #endif
     }
     
     private func checkPermissions() async {
