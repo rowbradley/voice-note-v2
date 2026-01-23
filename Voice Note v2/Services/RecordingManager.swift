@@ -115,16 +115,15 @@ final class RecordingManager {
         #endif
     }
 
-    /// Whether an external input device (headphones, Bluetooth) is connected
-    var isExternalInputConnected: Bool {
-        get async {
-            await liveAudioService.isExternalInputConnected
-        }
-    }
+    /// Cached value of whether an external input device is connected (updated by updateCurrentAudioDevice)
+    private(set) var isExternalInputConnected: Bool = false
 
     /// Update current audio input device (call on view appear to show device indicator)
-    func updateCurrentAudioDevice() async {
-        await liveAudioService.updateAudioInputDevice()
+    func updateCurrentAudioDevice() {
+        Task {
+            await liveAudioService.updateAudioInputDevice()
+            isExternalInputConnected = await liveAudioService.isExternalInputConnected
+        }
     }
     
     private var modelContext: ModelContext?
@@ -396,7 +395,7 @@ final class RecordingManager {
                 logger.warning("🔴 Live transcription failed to start, falling back to legacy: \(error)")
                 // Fall through to legacy recording
                 await liveAudioService.cancelRecording()
-                liveTranscriptionService.reset()
+                await liveTranscriptionService.cancelTranscription()
             }
         } else {
             logger.info("🔴 Live transcription NOT available, using legacy path")
@@ -482,7 +481,7 @@ final class RecordingManager {
             recordingState = .idle
             statusText = "Failed to process recording"
             isUsingLiveTranscription = false
-            liveTranscriptionService.reset()
+            await liveTranscriptionService.cancelTranscription()
         }
     }
 

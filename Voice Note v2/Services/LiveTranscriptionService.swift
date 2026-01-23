@@ -39,6 +39,11 @@ final class LiveTranscriptionService {
     /// Whether transcription is paused (audio buffers stop flowing when paused)
     private(set) var isPaused: Bool = false
 
+    // MARK: - Constants
+
+    /// Log buffer progress every N buffers (~1 second at 50Hz)
+    private static let bufferLogInterval = 50
+
     // MARK: - Private State
 
     private let logger = Logger(subsystem: "com.voicenote", category: "LiveTranscription")
@@ -60,6 +65,35 @@ final class LiveTranscriptionService {
     // Cached audio format (Optimization 4)
     // bestAvailableAudioFormat() result doesn't change per-device, so cache it
     private var cachedTargetFormat: AVAudioFormat?
+
+    // MARK: - Task Cleanup
+
+    /// Cleans up transcription tasks with proper ordering and consistent semantics.
+    /// - Parameter awaitCompletion: If true, await state-mutating tasks (resultsTask).
+    ///   Use `true` for graceful shutdown (stopTranscribing), `false` for immediate reset.
+    private func cleanupTranscriptionTasks(awaitCompletion: Bool) async {
+        // Phase 1: Stop input stream
+        inputContinuation?.finish()
+        inputContinuation = nil
+
+        // Phase 2: Wait for transcription analysis to complete
+        await transcriptionTask?.value
+        transcriptionTask = nil
+
+        // Phase 3: Handle state-mutating task (resultsTask updates finalizedText)
+        if awaitCompletion {
+            // Graceful: let it finish processing all results
+            await resultsTask?.value
+        } else {
+            // Immediate: force stop (may lose pending results)
+            resultsTask?.cancel()
+        }
+        resultsTask = nil
+
+        // Phase 4: Cancel buffer task (safe - only does logging, no state mutations)
+        bufferTask?.cancel()
+        bufferTask = nil
+    }
 
     // MARK: - Cache Management
 
@@ -252,7 +286,10 @@ final class LiveTranscriptionService {
             return
         }
 
-        // Reset state
+        // Reset state - defensive check for stale data from previous recording
+        if !self.finalizedText.isEmpty {
+            logger.warning("🎤 startTranscribing called with non-empty finalizedText: '\(self.finalizedText.prefix(50))...' - clearing")
+        }
         volatileText = ""
         finalizedText = ""
         isTranscribing = true
@@ -398,8 +435,8 @@ final class LiveTranscriptionService {
                             firstBufferContinuation = nil
                         }
 
-                        // Log every 50 buffers to track progress
-                        if bufferCount % 50 == 0 {
+                        // Log every N buffers to track progress
+                        if bufferCount % Self.bufferLogInterval == 0 {
                             self.logger.debug("🎤 Fed \(bufferCount) buffers")
                         }
                     }
@@ -510,29 +547,22 @@ final class LiveTranscriptionService {
     func stopTranscribing() async -> String {
         logger.info("Stopping live transcription...")
 
-        // Signal end of input
-        inputContinuation?.finish()
-        inputContinuation = nil
+        // Cancel transcription task before awaiting cleanup (defensive - signals intent to stop)
+        transcriptionTask?.cancel()
 
-        // Wait for transcription task to complete (give it time to finalize)
-        await transcriptionTask?.value
-        transcriptionTask = nil
-
-        // Cancel and clear child tasks
-        bufferTask?.cancel()
-        resultsTask?.cancel()
-        bufferTask = nil
-        resultsTask = nil
+        // Graceful cleanup - await state-mutating tasks to ensure all results are processed
+        await cleanupTranscriptionTasks(awaitCompletion: true)
 
         isTranscribing = false
         isPaused = false
 
-        // Build final transcript
-        let finalTranscript = finalizedText
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        // Build final transcript from accumulated results
+        let finalTranscript = TextNormalizer.buildFinalTranscript(from: finalizedText)
 
         logger.info("Final transcript: \(finalTranscript.count) characters")
+
+        // NOTE: State clearing (volatileText, finalizedText) moved to startTranscribing()
+        // This ensures clean state at the START of each recording, not the end
 
         // Invalidate analyzer cache - Apple docs: SpeechAnalyzer can't be reused after analyzeSequence()
         // Keep cachedLocale and cachedTargetFormat since those are still valid
@@ -541,30 +571,43 @@ final class LiveTranscriptionService {
         return finalTranscript
     }
 
-    /// Reset all transcription state
-    func reset() {
-        transcriptionTask?.cancel()
-        transcriptionTask = nil
+    /// Cancel transcription immediately (cancels tasks, doesn't await).
+    /// Use for error recovery or immediate teardown scenarios.
+    func cancelTranscription() async {
+        // Immediate cleanup - cancel all tasks without awaiting
+        await cleanupTranscriptionTasks(awaitCompletion: false)
 
-        // Cancel and clear child tasks
-        bufferTask?.cancel()
-        resultsTask?.cancel()
-        bufferTask = nil
-        resultsTask = nil
-
-        inputContinuation?.finish()
-        inputContinuation = nil
-
-        // Invalidate cached components with full format cache clear
-        // The underlying model stays in memory via ModelRetention (Optimization 3)
-        invalidateCachedComponents(clearFormatCache: true)
-
+        // Full state clear
         volatileText = ""
         finalizedText = ""
         isTranscribing = false
         isPaused = false
+
+        // Invalidate cached components with full format cache clear
+        // The underlying model stays in memory via ModelRetention (Optimization 3)
+        invalidateCachedComponents(clearFormatCache: true)
     }
 }
+
+// MARK: - Test Helpers
+
+#if DEBUG
+extension LiveTranscriptionService {
+    /// Sets internal state for testing purposes.
+    /// Only available in DEBUG builds.
+    func setTestState(
+        volatile: String = "",
+        finalized: String = "",
+        transcribing: Bool = false,
+        paused: Bool = false
+    ) {
+        volatileText = volatile
+        finalizedText = finalized
+        isTranscribing = transcribing
+        isPaused = paused
+    }
+}
+#endif
 
 // MARK: - Errors
 
