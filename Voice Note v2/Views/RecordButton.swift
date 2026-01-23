@@ -69,7 +69,7 @@ struct RecordButton: View {
                 colors: [.red.opacity(0.9), .red.opacity(0.85)],
                 startPoint: .top, endPoint: .bottom
             )
-        case .recording:
+        case .recording, .paused:
             return LinearGradient(
                 colors: [.red, .red.opacity(0.95)],
                 startPoint: .top, endPoint: .bottom
@@ -85,7 +85,7 @@ struct RecordButton: View {
     private var shadowColor: Color {
         switch state {
         case .idle: return .red.opacity(0.3)
-        case .recording: return .red.opacity(0.4)
+        case .recording, .paused: return .red.opacity(0.4)
         case .processing: return .gray.opacity(0.2)
         }
     }
@@ -101,7 +101,7 @@ struct RecordButton: View {
     private var strokeColor: Color {
         switch state {
         case .idle: return .red.opacity(0.3)
-        case .recording: return .red.opacity(0.5)
+        case .recording, .paused: return .red.opacity(0.5)
         case .processing: return .gray.opacity(0.3)
         }
     }
@@ -119,7 +119,7 @@ struct RecordButton: View {
         switch state {
         case .idle:
             Image(systemName: "mic.fill")  // Always show mic icon in idle
-        case .recording:
+        case .recording, .paused:
             Image(systemName: "stop.fill")
         case .processing:
             ProgressView()

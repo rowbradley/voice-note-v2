@@ -315,6 +315,36 @@ final class RecordingManager {
         logger.debug("State transition: \(String(describing: oldState)) → \(String(describing: self.recordingState))")
     }
 
+    /// Stops recording and copies transcript to clipboard (for Quick Capture mode).
+    ///
+    /// Used by menu bar Quick Capture mode where there's no floating panel.
+    /// Recording happens "headlessly" and transcript is auto-copied on stop.
+    ///
+    /// - Returns: The transcript if successful, nil otherwise
+    func stopRecordingAndCopyToClipboard() async -> String? {
+        guard recordingState == .recording || recordingState == .paused else {
+            logger.debug("stopRecordingAndCopyToClipboard called but not recording")
+            return nil
+        }
+
+        // Stop recording via normal flow
+        await toggleRecording()
+
+        // Get the transcript that was just recorded
+        let transcript = liveTranscript
+        guard !transcript.isEmpty else {
+            logger.info("No transcript to copy (empty)")
+            return nil
+        }
+
+        // Copy to clipboard
+        PlatformPasteboard.shared.copyText(transcript)
+        PlatformFeedback.shared.success()
+        logger.info("Transcript copied to clipboard (\(transcript.count) chars)")
+
+        return transcript
+    }
+
     /// Pause recording (only available with live transcription).
     ///
     /// Note: Pause/resume only works with LiveAudioService (AVAudioEngine).

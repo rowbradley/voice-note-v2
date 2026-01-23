@@ -59,7 +59,7 @@ struct Voice_Note_v2App: App {
             if let modelContainer = modelContainer {
                 MainTabView()
                     .environment(coordinator)
-                    .environment(\.appSettings, AppSettings.shared)
+                    .environment(AppSettings.shared)
                     .modelContainer(modelContainer)
                     .onAppear {
                         coordinator.bootstrap()

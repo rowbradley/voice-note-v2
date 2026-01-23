@@ -27,7 +27,7 @@ import os.log
 /// ## Usage in Views:
 /// ```swift
 /// struct MyView: View {
-///     @Environment(\.appSettings) private var appSettings
+///     @Environment(AppSettings.self) private var appSettings
 ///
 ///     var body: some View {
 ///         // Automatically re-renders when lowPowerMode changes
@@ -176,6 +176,14 @@ final class AppSettings {
         }
     }
 
+    /// Menu bar interaction mode: quick capture vs floating window.
+    /// Stored locally - workflow preference may vary by device.
+    var interactionMode: MenuBarInteractionMode {
+        didSet {
+            localStore.set(interactionMode.rawValue, forKey: Keys.interactionMode)
+        }
+    }
+
     // MARK: - Initialization
 
     /// Private initializer ensures singleton pattern.
@@ -213,6 +221,11 @@ final class AppSettings {
         self.floatingPanelStayOnTop = local.object(forKey: Keys.floatingPanelStayOnTop) as? Bool ?? true
         self.showRecordingBorder = local.object(forKey: Keys.showRecordingBorder) as? Bool ?? true
         self.autoArchiveQuickCaptures = iCloud.object(forKey: Keys.autoArchiveQuickCaptures) as? Bool ?? true
+
+        // Load menu bar interaction mode
+        self.interactionMode = MenuBarInteractionMode(
+            rawValue: local.string(forKey: Keys.interactionMode) ?? ""
+        ) ?? .floatingWindow
 
         // Listen for external iCloud changes (from other devices)
         setupExternalChangeObserver()
@@ -377,6 +390,7 @@ private enum Keys {
     static let floatingPanelStayOnTop = "floatingPanelStayOnTop"
     static let showRecordingBorder = "showRecordingBorder"
     static let autoArchiveQuickCaptures = "autoArchiveQuickCaptures"
+    static let interactionMode = "menuBarInteractionMode"
 }
 
 // MARK: - Audio Sync Policy
@@ -402,6 +416,33 @@ enum AudioSyncPolicy: String, CaseIterable, Codable {
         case .last7Days: return "Last 7 Days"
         case .last30Days: return "Last 30 Days"
         case .all: return "All Recordings"
+        }
+    }
+}
+
+// MARK: - Menu Bar Interaction Mode
+
+/// Controls how clicking the menu bar icon behaves.
+/// Device-local setting since workflow preference may vary by device.
+enum MenuBarInteractionMode: String, CaseIterable, Codable {
+    /// Click menu bar → start/stop recording immediately (no window).
+    /// Auto-copies transcript to clipboard on stop.
+    case quickCapture = "quickCapture"
+
+    /// Click menu bar → open floating panel for recording control.
+    case floatingWindow = "floatingWindow"
+
+    var displayName: String {
+        switch self {
+        case .quickCapture: return "Quick Capture"
+        case .floatingWindow: return "Floating Window"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .quickCapture: return "bolt.circle"
+        case .floatingWindow: return "rectangle.on.rectangle"
         }
     }
 }

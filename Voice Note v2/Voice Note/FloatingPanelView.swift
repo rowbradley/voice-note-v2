@@ -91,9 +91,31 @@ struct FloatingPanelView: View {
             WindowManager.setFloating(newValue, for: WindowManager.ID.floatingPanel)
         }
         .onChange(of: recordingManager.recordingState) { oldState, newState in
-            // Persist transcript when recording stops
+            // Persist transcript and auto-copy when recording stops
             if (oldState == .recording || oldState == .paused) && newState == .idle {
                 persistedTranscript = recordingManager.liveTranscript
+
+                // Auto-copy to clipboard when recording completes
+                if !persistedTranscript.isEmpty {
+                    PlatformPasteboard.shared.copyText(persistedTranscript)
+                    PlatformFeedback.shared.success()
+                    hasCopied = true
+                    lastCopiedRecordingId = recordingManager.lastRecordingId
+
+                    // Auto-archive if enabled
+                    if appSettings.autoArchiveQuickCaptures,
+                       let recordingId = recordingManager.lastRecordingId {
+                        recordingManager.archiveRecording(id: recordingId)
+                    }
+
+                    // Reset copy indicator after delay
+                    copyFeedbackTask?.cancel()
+                    copyFeedbackTask = Task {
+                        try? await Task.sleep(for: .seconds(2))
+                        guard !Task.isCancelled else { return }
+                        hasCopied = false
+                    }
+                }
             }
             // Clear state when starting new recording
             if newState == .recording && oldState != .paused {
@@ -283,59 +305,67 @@ struct FloatingPanelView: View {
 
     private var controlBar: some View {
         HStack {
-            // Left button (context-dependent)
-            Group {
-                switch panelState {
-                case .idle:
-                    EmptyView()
-                case .recording:
+            // LEFT SIDE: Pause/Resume + Stop
+            HStack(spacing: 8) {
+                // Pause/Resume button (only during recording)
+                if panelState == .recording {
                     if recordingManager.isUsingLiveTranscription {
                         Button(action: pauseRecording) {
                             Image(systemName: "pause.fill")
                         }
+                        .buttonStyle(.bordered)
                         .help("Pause")
                     }
-                case .paused:
+                } else if panelState == .paused {
                     Button(action: resumeRecording) {
                         Image(systemName: "play.fill")
                     }
+                    .buttonStyle(.bordered)
                     .help("Resume")
-                case .complete:
-                    Button(action: startNewRecording) {
-                        Image(systemName: "record.circle")
-                    }
-                    .help("New Recording")
-                case .processing:
-                    EmptyView()
                 }
-            }
-            .buttonStyle(.bordered)
 
-            Spacer()
-
-            // Right button (context-dependent)
-            Group {
-                switch panelState {
-                case .idle:
-                    EmptyView()
-                case .recording, .paused:
+                // Stop button (during recording or paused)
+                if panelState == .recording || panelState == .paused {
                     Button(action: stopRecording) {
                         Image(systemName: "stop.fill")
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
                     .help("Stop")
-                case .complete:
-                    Button(action: copyTranscript) {
-                        Image(systemName: hasCopied ? "checkmark" : "doc.on.doc")
-                    }
-                    .help(hasCopied ? "Copied!" : "Copy")
-                    .tint(hasCopied ? .green : nil)
-                    .disabled(displayTranscript.isEmpty)
-                case .processing:
+                }
+            }
+
+            Spacer()
+
+            // RIGHT SIDE: New Recording + Copy
+            HStack(spacing: 8) {
+                // Processing indicator
+                if panelState == .processing {
                     ProgressView()
                         .scaleEffect(0.8)
                 }
+
+                // New Recording button (+ icon)
+                // Show when complete or idle (ready to start fresh)
+                if panelState == .complete || panelState == .idle {
+                    Button(action: startNewRecording) {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("New Recording")
+                }
+
+                // Copy button (re-copy after auto-copy, or first copy)
+                if panelState == .complete {
+                    Button(action: copyTranscript) {
+                        Image(systemName: hasCopied ? "checkmark" : "doc.on.doc")
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(hasCopied ? .green : nil)
+                    .help(hasCopied ? "Copied!" : "Copy Again")
+                    .disabled(displayTranscript.isEmpty)
+                }
             }
-            .buttonStyle(.bordered)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

@@ -66,9 +66,20 @@ struct Voice_NoteApp: App {
     var body: some Scene {
         // Menu bar (always visible)
         // Using .menu style to avoid SwiftUI constraint loop bug with .window style
-        MenuBarExtra("Voice Note", systemImage: "waveform.circle") {
+        // Icon changes to red recording indicator when actively recording
+        MenuBarExtra {
             MenuBarMenuContent(recordingManager: recordingManager)
                 .environment(AppSettings.shared)
+        } label: {
+            // Dynamic icon based on recording state
+            if recordingManager.recordingState == .recording ||
+               recordingManager.recordingState == .paused {
+                Image(systemName: "record.circle.fill")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.red, .primary)
+            } else {
+                Image(systemName: "waveform.circle")
+            }
         }
         .menuBarExtraStyle(.menu)
 

@@ -226,7 +226,7 @@ struct AudioLevelBar: View {
     let level: Float
 
     /// App settings for frame rate
-    @Environment(\.appSettings) private var appSettings
+    @Environment(AppSettings.self) private var appSettings
 
     @ViewBuilder
     var body: some View {

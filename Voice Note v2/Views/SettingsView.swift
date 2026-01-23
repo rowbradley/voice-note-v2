@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.appSettings) private var appSettings
+    @Environment(AppSettings.self) private var appSettings
     @State private var showingResetConfirmation = false
     @State private var isResetting = false
     

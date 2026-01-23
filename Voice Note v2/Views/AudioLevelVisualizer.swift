@@ -21,7 +21,7 @@ struct AudioLevelVisualizer: View {
     var isVoiceDetected: Bool = false
 
     /// App settings for frame rate and bar count
-    @Environment(\.appSettings) private var appSettings
+    @Environment(AppSettings.self) private var appSettings
 
     /// Fixed bar spacing
     private let barSpacing: CGFloat = AudioConstants.LevelBar.barSpacing
