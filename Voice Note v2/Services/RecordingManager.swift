@@ -79,6 +79,12 @@ final class RecordingManager {
 
     // MARK: - Computed Properties for UI
 
+    /// Convenience property for checking if actively in a recording session.
+    /// True when recording or paused; false when idle or processing.
+    var isRecordingOrPaused: Bool {
+        recordingState == .recording || recordingState == .paused
+    }
+
     /// Audio level - uses live service when available, falls back to legacy (iOS only)
     var currentAudioLevel: Float {
         #if os(iOS)

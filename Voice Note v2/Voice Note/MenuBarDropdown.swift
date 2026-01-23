@@ -19,8 +19,7 @@ struct MenuBarMenuContent: View {
 
     /// Whether currently recording or paused (active recording session)
     private var isRecording: Bool {
-        recordingManager.recordingState == .recording ||
-        recordingManager.recordingState == .paused
+        recordingManager.isRecordingOrPaused
     }
 
     var body: some View {

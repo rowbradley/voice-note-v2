@@ -72,8 +72,7 @@ struct Voice_NoteApp: App {
                 .environment(AppSettings.shared)
         } label: {
             // Dynamic icon based on recording state
-            if recordingManager.recordingState == .recording ||
-               recordingManager.recordingState == .paused {
+            if recordingManager.isRecordingOrPaused {
                 Image(systemName: "record.circle.fill")
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(.red, .primary)

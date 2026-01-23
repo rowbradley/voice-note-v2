@@ -91,38 +91,12 @@ struct FloatingPanelView: View {
             WindowManager.setFloating(newValue, for: WindowManager.ID.floatingPanel)
         }
         .onChange(of: recordingManager.recordingState) { oldState, newState in
-            // Persist transcript and auto-copy when recording stops
-            if (oldState == .recording || oldState == .paused) && newState == .idle {
-                persistedTranscript = recordingManager.liveTranscript
-
-                // Auto-copy to clipboard when recording completes
-                if !persistedTranscript.isEmpty {
-                    PlatformPasteboard.shared.copyText(persistedTranscript)
-                    PlatformFeedback.shared.success()
-                    hasCopied = true
-                    lastCopiedRecordingId = recordingManager.lastRecordingId
-
-                    // Auto-archive if enabled
-                    if appSettings.autoArchiveQuickCaptures,
-                       let recordingId = recordingManager.lastRecordingId {
-                        recordingManager.archiveRecording(id: recordingId)
-                    }
-
-                    // Reset copy indicator after delay
-                    copyFeedbackTask?.cancel()
-                    copyFeedbackTask = Task {
-                        try? await Task.sleep(for: .seconds(2))
-                        guard !Task.isCancelled else { return }
-                        hasCopied = false
-                    }
-                }
+            let wasRecording = oldState == .recording || oldState == .paused
+            if wasRecording && newState == .idle {
+                handleRecordingCompleted()
             }
-            // Clear state when starting new recording
             if newState == .recording && oldState != .paused {
-                persistedTranscript = ""
-                lastCopiedRecordingId = nil
-                hasCopied = false
-                copyFeedbackTask?.cancel()
+                handleRecordingStarted()
             }
         }
     }
@@ -370,6 +344,40 @@ struct FloatingPanelView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .frame(height: 44)
+    }
+
+    // MARK: - State Handlers
+
+    /// Handles recording completion: persists transcript, auto-copies, optionally archives.
+    private func handleRecordingCompleted() {
+        persistedTranscript = recordingManager.liveTranscript
+
+        guard !persistedTranscript.isEmpty else { return }
+
+        PlatformPasteboard.shared.copyText(persistedTranscript)
+        PlatformFeedback.shared.success()
+        hasCopied = true
+        lastCopiedRecordingId = recordingManager.lastRecordingId
+
+        if appSettings.autoArchiveQuickCaptures,
+           let recordingId = recordingManager.lastRecordingId {
+            recordingManager.archiveRecording(id: recordingId)
+        }
+
+        copyFeedbackTask?.cancel()
+        copyFeedbackTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            hasCopied = false
+        }
+    }
+
+    /// Resets UI state when starting a new recording.
+    private func handleRecordingStarted() {
+        persistedTranscript = ""
+        lastCopiedRecordingId = nil
+        hasCopied = false
+        copyFeedbackTask?.cancel()
     }
 
     // MARK: - Actions
