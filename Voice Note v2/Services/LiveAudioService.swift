@@ -410,8 +410,8 @@ final class LiveAudioService {
     }
 
     private func startDurationTimer() {
-        // Update duration every 0.2 seconds
-        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+        // Update duration every 0.5 seconds (2Hz) - duration display doesn't need sub-second precision
+        durationTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.currentDuration = self?.currentRecordingDuration ?? 0
             }

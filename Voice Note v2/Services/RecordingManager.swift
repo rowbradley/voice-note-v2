@@ -321,6 +321,36 @@ final class RecordingManager {
         logger.debug("State transition: \(String(describing: oldState)) → \(String(describing: self.recordingState))")
     }
 
+    /// Finalizes the current recording and immediately starts a new one.
+    ///
+    /// Used when user clicks "New Recording" while a recording is paused (soft-stopped).
+    /// This ensures the old recording is saved to database before starting fresh.
+    func finalizeAndStartNew() async {
+        logger.debug("Finalize and start new. Current state: \(String(describing: self.recordingState))")
+
+        // Stop current recording if active
+        if recordingState == .recording || recordingState == .paused {
+            await stopRecording()
+        }
+
+        // Start new recording (state should now be .idle after processing completes)
+        // Note: stopRecording sets state to .processing, then .idle when done
+        // We need to wait for idle state before starting new
+        await startRecording()
+    }
+
+    /// Finalizes the current recording without starting a new one.
+    ///
+    /// Used when the floating panel closes while soft-stopped.
+    /// Ensures the transcript is saved to database before panel dismissal.
+    func finalizeRecording() async {
+        logger.debug("Finalize recording. Current state: \(String(describing: self.recordingState))")
+
+        if recordingState == .recording || recordingState == .paused {
+            await stopRecording()
+        }
+    }
+
     /// Stops recording and copies transcript to clipboard (for Quick Capture mode).
     ///
     /// Used by menu bar Quick Capture mode where there's no floating panel.
@@ -547,6 +577,7 @@ final class RecordingManager {
         // Create and assign transcript
         let transcript = Transcript(text: transcriptText)
         recording.transcript = transcript
+        logger.info("🟣 TRANSCRIPT CREATED - Recording ID: \(recording.id), Transcript ID: \(transcript.id)")
 
         // Auto-cleanup for Pro users
         if AppSettings.shared.isProUser {
@@ -564,7 +595,12 @@ final class RecordingManager {
         generateTitle(for: transcript, from: transcriptText, recording: recording)
 
         // Save and update UI
-        try? modelContext?.save()
+        do {
+            try modelContext?.save()
+            logger.info("🟣 SAVE SUCCESS - Recording: \(recording.id), Transcript: \(transcript.id)")
+        } catch {
+            logger.error("🟣 SAVE FAILED: \(error)")
+        }
         isTranscribing = false
         statusText = "Transcription complete!"
         loadRecentRecordings()

@@ -11,6 +11,15 @@ import os
 
 private let logger = Logger(subsystem: "com.voicenote", category: "FloatingPanel")
 
+// MARK: - Layout Constants
+
+private enum Layout {
+    static let width: CGFloat = 420
+    static let height: CGFloat = 320
+    static let cornerRadius: CGFloat = 14
+    static let windowTitle = "Voice Note"  // Must match Window title in Voice_NoteApp
+}
+
 /// Panel-specific states for UI rendering.
 /// Separate from RecordingState because the panel needs a "complete" state
 /// to show post-recording UI (copy button, transcript) while RecordingManager
@@ -20,6 +29,7 @@ private enum PanelState {
     case idle
     case recording
     case paused
+    case stopped      // "Soft stopped" - can resume, auto-copied
     case processing
     case complete
 }
@@ -31,9 +41,10 @@ struct FloatingPanelView: View {
     @Environment(\.openWindow) private var openWindow
 
     @State private var hasCopied = false
-    @State private var lastCopiedRecordingId: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
     @State private var persistedTranscript: String = ""
+    @State private var isSoftStopped: Bool = false
+    @State private var archivedRecordingId: UUID?  // Tracks archived recording to prevent duplicates
 
     /// Derived panel state from recording manager
     private var panelState: PanelState {
@@ -47,57 +58,84 @@ struct FloatingPanelView: View {
         case .recording:
             return .recording
         case .paused:
-            return .paused
+            // UI distinction: soft-stopped shows different controls than paused
+            return isSoftStopped ? .stopped : .paused
         case .processing:
             return .processing
         }
     }
 
     /// Transcript to display - persisted for complete state, live for recording/paused
+    /// Note: Accesses liveTranscriptionService.displayText directly to ensure @Observable
+    /// properly tracks changes (computed properties through RecordingManager don't propagate).
     private var displayTranscript: String {
-        panelState == .complete ? persistedTranscript : recordingManager.liveTranscript
+        panelState == .complete
+            ? persistedTranscript
+            : recordingManager.liveTranscriptionService.displayText
     }
 
     var body: some View {
+        panelContent
+            .frame(width: Layout.width, height: Layout.height)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: Layout.cornerRadius))
+            .overlay(panelBorder)
+            .shadow(color: .black.opacity(0.25), radius: 30, x: 0, y: 10)
+            .onKeyPress(.escape) {
+                dismiss()
+                return .handled
+            }
+            .onAppear(perform: handleOnAppear)
+            .onDisappear(perform: handleOnDisappear)
+            .onChange(of: appSettings.floatingPanelStayOnTop) { _, newValue in
+                WindowManager.setFloating(newValue, for: WindowManager.ID.floatingPanel)
+            }
+            .onChange(of: recordingManager.recordingState, handleRecordingStateChange)
+    }
+
+    /// Main panel content layout
+    private var panelContent: some View {
         VStack(spacing: 0) {
             headerBar
-
-            Divider()
-                .opacity(0.5)
-
+            Divider().opacity(0.5)
             contentArea
-
-            Divider()
-                .opacity(0.5)
-
+            Divider().opacity(0.5)
             controlBar
         }
-        .frame(width: 420, height: 320)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 6)
-        .onKeyPress(.escape) {
-            dismiss()
-            return .handled
-        }
-        .onAppear {
-            WindowManager.setIdentifier(WindowManager.ID.floatingPanel, forWindowWithTitle: "Voice Note")
-            WindowManager.setFloating(appSettings.floatingPanelStayOnTop, for: WindowManager.ID.floatingPanel)
-        }
-        .onDisappear {
-            copyFeedbackTask?.cancel()
-        }
-        .onChange(of: appSettings.floatingPanelStayOnTop) { _, newValue in
-            WindowManager.setFloating(newValue, for: WindowManager.ID.floatingPanel)
-        }
-        .onChange(of: recordingManager.recordingState) { oldState, newState in
-            let wasRecording = oldState == .recording || oldState == .paused
-            if wasRecording && newState == .idle {
-                handleRecordingCompleted()
+    }
+
+    /// Border overlay for panel
+    private var panelBorder: some View {
+        RoundedRectangle(cornerRadius: Layout.cornerRadius)
+            .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+    }
+
+    private func handleOnAppear() {
+        WindowManager.setIdentifier(WindowManager.ID.floatingPanel, forWindowWithTitle: Layout.windowTitle)
+        WindowManager.setFloating(appSettings.floatingPanelStayOnTop, for: WindowManager.ID.floatingPanel)
+    }
+
+    private func handleOnDisappear() {
+        copyFeedbackTask?.cancel()
+
+        // Auto-finalize if panel closes while soft-stopped
+        // This ensures the transcript is saved to database, not lost
+        if isSoftStopped {
+            Task {
+                await recordingManager.finalizeRecording()
             }
-            if newState == .recording && oldState != .paused {
-                handleRecordingStarted()
-            }
+        }
+    }
+
+    private func handleRecordingStateChange(_ oldState: RecordingState, _ newState: RecordingState) {
+        // Handle recording completion: .recording/.paused/.processing → .idle
+        let wasActiveSession = oldState == .recording || oldState == .paused || oldState == .processing
+        if wasActiveSession && newState == .idle {
+            handleRecordingCompleted()
+        }
+        // Handle new recording start (not resume from pause)
+        if newState == .recording && oldState != .paused {
+            handleRecordingStarted()
         }
     }
 
@@ -118,7 +156,7 @@ struct FloatingPanelView: View {
 
             Spacer()
 
-            if panelState == .recording || panelState == .paused {
+            if panelState == .recording || panelState == .paused || panelState == .stopped {
                 Text(TimeFormatting.paddedDuration(recordingManager.currentDuration))
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.secondary)
@@ -176,6 +214,8 @@ struct FloatingPanelView: View {
             return PanelAppearance(indicatorColor: .red, statusText: "Recording", statusTextColor: .red)
         case .paused:
             return PanelAppearance(indicatorColor: .orange, statusText: "Paused", statusTextColor: .orange)
+        case .stopped:
+            return PanelAppearance(indicatorColor: .green, statusText: hasCopied ? "Auto-copied" : "Stopped", statusTextColor: hasCopied ? .green : .primary)
         case .processing:
             return PanelAppearance(indicatorColor: .blue, statusText: "Processing...", statusTextColor: .primary)
         case .complete:
@@ -190,10 +230,9 @@ struct FloatingPanelView: View {
             switch panelState {
             case .idle:
                 idleContent
-            case .recording, .paused, .complete:
+            case .recording, .paused, .stopped, .processing, .complete:
+                // Keep showing transcript during all active/post-recording states
                 transcriptContent
-            case .processing:
-                processingContent
             }
         }
         .frame(maxHeight: .infinity)
@@ -253,6 +292,13 @@ struct FloatingPanelView: View {
                 Text("Paused")
                     .font(.body)
                     .foregroundColor(.secondary)
+            } else if panelState == .stopped {
+                Image(systemName: "stop.circle")
+                    .font(.system(size: 32))
+                    .foregroundColor(.green)
+                Text("Stopped")
+                    .font(.body)
+                    .foregroundColor(.secondary)
             } else {
                 ProgressView()
                     .scaleEffect(0.8)
@@ -264,138 +310,190 @@ struct FloatingPanelView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var processingContent: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-
-            Text("Finalizing...")
-                .font(.body)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
     // MARK: - Control Bar
+
+    /// Reusable copy button with optional checkmark feedback.
+    @ViewBuilder
+    private func copyButton(showFeedback: Bool = false) -> some View {
+        let isFeedbackActive = showFeedback && hasCopied
+
+        Button(action: copyTranscript) {
+            Image(systemName: isFeedbackActive ? "checkmark" : "doc.on.doc")
+        }
+        .buttonStyle(.bordered)
+        .tint(isFeedbackActive ? .green : nil)
+        .help(isFeedbackActive ? "Copied!" : (showFeedback ? "Copy Again" : "Copy"))
+        .disabled(displayTranscript.isEmpty)
+    }
 
     private var controlBar: some View {
         HStack {
-            // LEFT SIDE: Pause/Resume + Stop
-            HStack(spacing: 8) {
-                // Pause/Resume button (only during recording)
-                if panelState == .recording {
-                    if recordingManager.isUsingLiveTranscription {
-                        Button(action: pauseRecording) {
-                            Image(systemName: "pause.fill")
-                        }
-                        .buttonStyle(.bordered)
-                        .help("Pause")
-                    }
-                } else if panelState == .paused {
-                    Button(action: resumeRecording) {
-                        Image(systemName: "play.fill")
-                    }
-                    .buttonStyle(.bordered)
-                    .help("Resume")
-                }
-
-                // Stop button (during recording or paused)
-                if panelState == .recording || panelState == .paused {
-                    Button(action: stopRecording) {
-                        Image(systemName: "stop.fill")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                    .help("Stop")
-                }
-            }
-
+            leftControls
             Spacer()
-
-            // RIGHT SIDE: New Recording + Copy
-            HStack(spacing: 8) {
-                // Processing indicator
-                if panelState == .processing {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                }
-
-                // New Recording button (+ icon)
-                // Show when complete or idle (ready to start fresh)
-                if panelState == .complete || panelState == .idle {
-                    Button(action: startNewRecording) {
-                        Image(systemName: "plus")
-                    }
-                    .buttonStyle(.bordered)
-                    .help("New Recording")
-                }
-
-                // Copy button (re-copy after auto-copy, or first copy)
-                if panelState == .complete {
-                    Button(action: copyTranscript) {
-                        Image(systemName: hasCopied ? "checkmark" : "doc.on.doc")
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(hasCopied ? .green : nil)
-                    .help(hasCopied ? "Copied!" : "Copy Again")
-                    .disabled(displayTranscript.isEmpty)
-                }
-            }
+            rightControls
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .frame(height: 44)
     }
 
+    /// Left side controls based on panel state
+    @ViewBuilder
+    private var leftControls: some View {
+        HStack(spacing: 8) {
+            switch panelState {
+            case .recording:
+                recordingControls
+            case .paused:
+                pausedControls
+            case .stopped:
+                stoppedControls
+            case .processing:
+                ProgressView()
+                    .scaleEffect(0.8)
+            case .idle, .complete:
+                EmptyView()
+            }
+        }
+    }
+
+    /// Controls shown while recording: [Pause] [Stop]
+    @ViewBuilder
+    private var recordingControls: some View {
+        if recordingManager.isUsingLiveTranscription {
+            Button(action: pauseRecording) {
+                Image(systemName: "pause.fill")
+            }
+            .buttonStyle(.bordered)
+            .help("Pause")
+        }
+
+        Button(action: softStop) {
+            Image(systemName: "stop.fill")
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+        .help("Stop")
+    }
+
+    /// Controls shown while paused: [Resume] [Stop] [Copy]
+    @ViewBuilder
+    private var pausedControls: some View {
+        Button(action: resumeRecording) {
+            Image(systemName: "record.circle")
+        }
+        .buttonStyle(.bordered)
+        .help("Resume")
+
+        Button(action: softStop) {
+            Image(systemName: "stop.fill")
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.red)
+        .help("Stop")
+
+        copyButton()
+    }
+
+    /// Controls shown while soft-stopped: [Resume] [Copy]
+    @ViewBuilder
+    private var stoppedControls: some View {
+        Button(action: resumeFromStop) {
+            Image(systemName: "record.circle")
+        }
+        .buttonStyle(.bordered)
+        .help("Resume Recording")
+
+        copyButton(showFeedback: true)
+    }
+
+    /// Right side controls: New Recording button and complete-state copy
+    @ViewBuilder
+    private var rightControls: some View {
+        HStack(spacing: 8) {
+            if panelState == .stopped || panelState == .complete || panelState == .idle {
+                Button(action: startNewRecording) {
+                    Image(systemName: "plus")
+                }
+                .buttonStyle(.bordered)
+                .help("New Recording")
+            }
+
+            if panelState == .complete {
+                copyButton(showFeedback: true)
+            }
+        }
+    }
+
     // MARK: - State Handlers
 
     /// Handles recording completion: persists transcript, auto-copies, optionally archives.
     private func handleRecordingCompleted() {
-        persistedTranscript = recordingManager.liveTranscript
+        isSoftStopped = false
+        persistedTranscript = recordingManager.liveTranscriptionService.displayText
 
         guard !persistedTranscript.isEmpty else { return }
 
         PlatformPasteboard.shared.copyText(persistedTranscript)
         PlatformFeedback.shared.success()
         hasCopied = true
-        lastCopiedRecordingId = recordingManager.lastRecordingId
-
-        if appSettings.autoArchiveQuickCaptures,
-           let recordingId = recordingManager.lastRecordingId {
-            recordingManager.archiveRecording(id: recordingId)
-        }
-
-        copyFeedbackTask?.cancel()
-        copyFeedbackTask = Task {
-            try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled else { return }
-            hasCopied = false
-        }
+        archiveIfNeeded(recordingManager.lastRecordingId)
+        showCopyFeedback()
     }
 
     /// Resets UI state when starting a new recording.
     private func handleRecordingStarted() {
+        isSoftStopped = false
         persistedTranscript = ""
-        lastCopiedRecordingId = nil
         hasCopied = false
+        archivedRecordingId = nil
         copyFeedbackTask?.cancel()
     }
 
     // MARK: - Actions
 
-    /// Starts a new recording, resetting any previous state.
+    /// Starts a new recording, finalizing any previous session.
     private func startNewRecording() {
-        lastCopiedRecordingId = nil
+        isSoftStopped = false
         hasCopied = false
+        archivedRecordingId = nil
         copyFeedbackTask?.cancel()
 
         Task {
-            await recordingManager.toggleRecording()
+            await recordingManager.finalizeAndStartNew()
         }
     }
 
-    private func stopRecording() {
-        Task {
-            await recordingManager.toggleRecording()
+    /// Soft stop: pauses recording and triggers auto-copy, but allows resume.
+    private func softStop() {
+        // Handle based on current state
+        switch recordingManager.recordingState {
+        case .recording:
+            do {
+                try recordingManager.pauseRecording()
+            } catch {
+                logger.error("Pause in softStop failed: \(error.localizedDescription)")
+                return
+            }
+        case .paused:
+            break  // Already paused, proceed to soft stop
+        case .idle, .processing:
+            logger.warning("softStop called in unexpected state: \(String(describing: recordingManager.recordingState))")
+            return
+        }
+
+        isSoftStopped = true
+        copyTranscript()
+    }
+
+    /// Resume from soft-stopped state.
+    private func resumeFromStop() {
+        do {
+            try recordingManager.resumeRecording()
+            isSoftStopped = false
+            // Note: Don't clear hasCopied - let existing timeout handle it
+        } catch {
+            logger.error("Resume from stop failed: \(error.localizedDescription)")
         }
     }
 
@@ -403,7 +501,6 @@ struct FloatingPanelView: View {
         do {
             try recordingManager.pauseRecording()
         } catch {
-            // Pause failed - user can still stop recording
             logger.error("Pause failed: \(error.localizedDescription)")
         }
     }
@@ -412,7 +509,6 @@ struct FloatingPanelView: View {
         do {
             try recordingManager.resumeRecording()
         } catch {
-            // Resume failed - user can still stop recording
             logger.error("Resume failed: \(error.localizedDescription)")
         }
     }
@@ -421,24 +517,27 @@ struct FloatingPanelView: View {
         let text = displayTranscript
         guard !text.isEmpty else { return }
 
-        // Capture ID immediately before any async work to prevent race condition
-        // if user rapidly starts new recording after copy
-        let recordingIdToArchive = recordingManager.lastRecordingId
-
         PlatformPasteboard.shared.copyText(text)
         PlatformFeedback.shared.success()
         hasCopied = true
 
-        // Use captured ID for archiving
-        if appSettings.autoArchiveQuickCaptures,
-           let recordingId = recordingIdToArchive {
-            recordingManager.archiveRecording(id: recordingId)
-        }
+        archiveIfNeeded(recordingManager.lastRecordingId)
+        showCopyFeedback()
+    }
 
-        // Use captured ID for state tracking
-        lastCopiedRecordingId = recordingIdToArchive
+    /// Archives the recording if auto-archive setting is enabled.
+    /// Guards against duplicate calls for the same recording.
+    private func archiveIfNeeded(_ recordingId: UUID?) {
+        guard appSettings.autoArchiveQuickCaptures,
+              let recordingId = recordingId,
+              archivedRecordingId != recordingId else { return }
 
-        // Cancellable task for resetting copy button state
+        archivedRecordingId = recordingId
+        recordingManager.archiveRecording(id: recordingId)
+    }
+
+    /// Shows copy feedback with auto-reset after 2 seconds.
+    private func showCopyFeedback() {
         copyFeedbackTask?.cancel()
         copyFeedbackTask = Task {
             try? await Task.sleep(for: .seconds(2))
@@ -453,5 +552,5 @@ struct FloatingPanelView: View {
     FloatingPanelView()
         .environment(RecordingManager())
         .environment(AppSettings.shared)
-        .frame(width: 420, height: 320)
+        .frame(width: Layout.width, height: Layout.height)
 }
