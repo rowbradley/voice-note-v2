@@ -45,13 +45,9 @@
 		AFC05678B17D479EC16CF64A /* AudioFormatConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC01234B17D479EC16CF64A /* AudioFormatConverter.swift */; };
 		B4172504A71A17D3C7D3B688 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B02C3892651A6C57E4D359B1 /* RecordingView.swift */; };
 		D24C31E4A9E2DE1F7EC8CF3F /* AudioFormatConverterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 321A91BD742ABFB91D345D63 /* AudioFormatConverterTests.swift */; };
-		TST0010001000100010001001 /* TextNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TST0020002000200020002002 /* TextNormalizerTests.swift */; };
-		TST0030003000300030003003 /* LiveTranscriptionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TST0040004000400040004004 /* LiveTranscriptionServiceTests.swift */; };
 		D5E6F7081920A3B4C5D6E7F8 /* InlineExpandedContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304B5C /* InlineExpandedContentView.swift */; };
 		E6B9E974547DC31A2896AD17 /* LiveTranscriptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */; };
 		F57DA95FEEB06D9B284AA23D /* UserDefaults+Keys.swift in Sources */ = {isa = PBXBuildFile; fileRef = F638F0978415976913F43CAB /* UserDefaults+Keys.swift */; };
-		TXT0010001000100010001001 /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = TXT0020002000200020002002 /* TextNormalizer.swift */; };
-		TXT0030003000300030003003 /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = TXT0020002000200020002002 /* TextNormalizer.swift */; };
 		IOS0010001000100010001001 /* AudioSessionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC001000100010001A001A1 /* AudioSessionProvider.swift */; };
 		IOS0020002000200020002002 /* iOSAudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC002000200020002A002A2 /* iOSAudioSession.swift */; };
 		IOS0030003000300030003003 /* macOSAudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC003000300030003A003A3 /* macOSAudioSession.swift */; };
@@ -87,6 +83,10 @@
 		MAC0550055005500550055001 /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 60A704A42E0254360078652F /* Config.plist */; };
 		MAC0560056005600560056001 /* RecordingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAC006000600060006A006A6 /* RecordingState.swift */; };
 		MAC0570057005700570057001 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = SES0070007000700070007007 /* Session.swift */; };
+		TST0010001000100010001001 /* TextNormalizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TST0020002000200020002002 /* TextNormalizerTests.swift */; };
+		TST0030003000300030003003 /* LiveTranscriptionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TST0040004000400040004004 /* LiveTranscriptionServiceTests.swift */; };
+		TXT0010001000100010001001 /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = TXT0020002000200020002002 /* TextNormalizer.swift */; };
+		TXT0030003000300030003003 /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = TXT0020002000200020002002 /* TextNormalizer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -123,8 +123,6 @@
 /* Begin PBXFileReference section */
 		0D5974090B42C757B8FF1A82 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		321A91BD742ABFB91D345D63 /* AudioFormatConverterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AudioFormatConverterTests.swift; path = Tests/AudioFormatConverterTests.swift; sourceTree = "<group>"; };
-		TST0020002000200020002002 /* TextNormalizerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TextNormalizerTests.swift; path = Tests/TextNormalizerTests.swift; sourceTree = "<group>"; };
-		TST0040004000400040004004 /* LiveTranscriptionServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptionServiceTests.swift; path = Tests/LiveTranscriptionServiceTests.swift; sourceTree = "<group>"; };
 		4611D93D29EC4A5BA50A4656 /* GenerableTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerableTemplates.swift; sourceTree = "<group>"; };
 		47448B8E29E423AA7F80367B /* AudioConstants.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudioConstants.swift; sourceTree = "<group>"; };
 		5091639BEA332E5C55D5D485 /* LiveTranscriptionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptionService.swift; path = ../Services/LiveTranscriptionService.swift; sourceTree = "<group>"; };
@@ -173,7 +171,6 @@
 		CB8AAF16FCD56DEB540FC22A /* LiveTranscriptView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptView.swift; path = ../Views/Components/LiveTranscriptView.swift; sourceTree = "<group>"; };
 		EE552A70512C7521CAEE9E50 /* AppSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		F638F0978415976913F43CAB /* UserDefaults+Keys.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "UserDefaults+Keys.swift"; sourceTree = "<group>"; };
-		TXT0020002000200020002002 /* TextNormalizer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
 		MAC001000100010001A001A1 /* AudioSessionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionProvider.swift; sourceTree = "<group>"; };
 		MAC002000200020002A002A2 /* iOSAudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSAudioSession.swift; sourceTree = "<group>"; };
 		MAC003000300030003A003A3 /* macOSAudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = macOSAudioSession.swift; sourceTree = "<group>"; };
@@ -181,6 +178,9 @@
 		MAC005000500050005A005A5 /* PlatformPasteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformPasteboard.swift; sourceTree = "<group>"; };
 		MAC006000600060006A006A6 /* RecordingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingState.swift; sourceTree = "<group>"; };
 		SES0070007000700070007007 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
+		TST0020002000200020002002 /* TextNormalizerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TextNormalizerTests.swift; path = Tests/TextNormalizerTests.swift; sourceTree = "<group>"; };
+		TST0040004000400040004004 /* LiveTranscriptionServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LiveTranscriptionServiceTests.swift; path = Tests/LiveTranscriptionServiceTests.swift; sourceTree = "<group>"; };
+		TXT0020002000200020002002 /* TextNormalizer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */

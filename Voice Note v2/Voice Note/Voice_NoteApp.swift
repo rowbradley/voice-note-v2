@@ -72,7 +72,7 @@ struct Voice_NoteApp: App {
                 .environment(AppSettings.shared)
         } label: {
             // Dynamic icon based on recording state
-            if recordingManager.isRecordingOrPaused {
+            if recordingManager.isRecording {
                 Image(systemName: "record.circle.fill")
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(.red, .primary)
@@ -117,26 +117,6 @@ struct Voice_NoteApp: App {
             let size = content.sizeThatFits(.unspecified)
             let x = displayBounds.midX - size.width / 2
             let y = displayBounds.maxY - size.height - 50 // 50pt from top
-            return WindowPlacement(CGPoint(x: x, y: y))
-        }
-
-        // Quick Capture preview panel (appears during Quick Capture recording)
-        // Positioned near top-right, close to menu bar
-        Window("Quick Capture", id: "quick-capture-panel") {
-            if let modelContainer = modelContainer {
-                QuickCapturePanel()
-                    .environment(recordingManager)
-                    .environment(AppSettings.shared)
-                    .modelContainer(modelContainer)
-            }
-        }
-        .windowStyle(.plain)
-        .windowResizability(.contentSize)
-        .defaultWindowPlacement { content, context in
-            let displayBounds = context.defaultDisplay.visibleRect
-            let size = content.sizeThatFits(.unspecified)
-            let x = displayBounds.maxX - size.width - 20  // 20pt from right edge
-            let y = displayBounds.maxY - size.height - 10  // Near top (menu bar)
             return WindowPlacement(CGPoint(x: x, y: y))
         }
 

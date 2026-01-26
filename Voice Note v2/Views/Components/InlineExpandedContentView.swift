@@ -1,6 +1,9 @@
 import SwiftUI
-import UIKit
 import UniformTypeIdentifiers
+
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Inline Expanded Content View
 /// Full-screen view for viewing and editing transcript or note content.
@@ -107,7 +110,7 @@ struct InlineExpandedContentView: View {
                     }
                 }
             }
-            .background(Color(.systemBackground))
+            .background(.background)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -224,6 +227,7 @@ struct InlineExpandedContentView: View {
 
     private func copyContent() {
         // Copy as rich text with RTF + plain text fallback
+        #if canImport(UIKit)
         do {
             let nsAttributed = NSAttributedString(content)
 
@@ -239,8 +243,12 @@ struct InlineExpandedContentView: View {
             ])
         } catch {
             // Fallback to plain text if RTF conversion fails
-            UIPasteboard.general.string = plainTextContent
+            PlatformPasteboard.shared.copyText(plainTextContent)
         }
+        #else
+        // macOS: Plain text copy (RTF support can be added to PlatformPasteboard later)
+        PlatformPasteboard.shared.copyText(plainTextContent)
+        #endif
 
         // Visual feedback
         withAnimation(.easeInOut(duration: 0.2)) {
@@ -276,7 +284,7 @@ struct InlineExpandedContentView: View {
             }
             output += text
         }
-        UIPasteboard.general.string = output
+        PlatformPasteboard.shared.copyText(output)
 
         // Trigger haptic and visual feedback
         withAnimation(.easeInOut(duration: 0.2)) {

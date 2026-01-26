@@ -17,6 +17,13 @@ final class RecordingManager {
     var showFailedTranscriptionAlert = false
     var failedTranscriptionMessage = ""
 
+    // MARK: - Recording Completion
+
+    /// The finalized transcript from the most recent completed recording.
+    /// Set only after `stopTranscribing()` fully completes — never stale.
+    /// Observed by FloatingPanelView for auto-copy; avoids race conditions.
+    private(set) var completedTranscript: String?
+
     // MARK: - Live Transcription State
 
     /// Current live transcript text (volatile + finalized)
@@ -37,10 +44,6 @@ final class RecordingManager {
     /// Whether using live transcription for current recording
     private(set) var isUsingLiveTranscription: Bool = false
 
-    /// Whether recording is currently paused (only available with live transcription)
-    var isPaused: Bool {
-        liveAudioService.isPaused
-    }
 
     // MARK: - Services
     //
@@ -79,10 +82,9 @@ final class RecordingManager {
 
     // MARK: - Computed Properties for UI
 
-    /// Convenience property for checking if actively in a recording session.
-    /// True when recording or paused; false when idle or processing.
-    var isRecordingOrPaused: Bool {
-        recordingState == .recording || recordingState == .paused
+    /// Convenience property for checking if actively recording.
+    var isRecording: Bool {
+        recordingState == .recording
     }
 
     /// Audio level - uses live service when available, falls back to legacy (iOS only)
@@ -311,8 +313,6 @@ final class RecordingManager {
             await startRecording()
         case .recording:
             await stopRecording()
-        case .paused:
-            await stopRecording()  // Stop from paused state
         case .processing:
             logger.debug("Currently processing, ignoring tap")
             break // Do nothing while processing
@@ -329,7 +329,7 @@ final class RecordingManager {
         logger.debug("Finalize and start new. Current state: \(String(describing: self.recordingState))")
 
         // Stop current recording if active
-        if recordingState == .recording || recordingState == .paused {
+        if recordingState == .recording {
             await stopRecording()
         }
 
@@ -346,19 +346,16 @@ final class RecordingManager {
     func finalizeRecording() async {
         logger.debug("Finalize recording. Current state: \(String(describing: self.recordingState))")
 
-        if recordingState == .recording || recordingState == .paused {
+        if recordingState == .recording {
             await stopRecording()
         }
     }
 
-    /// Stops recording and copies transcript to clipboard (for Quick Capture mode).
-    ///
-    /// Used by menu bar Quick Capture mode where there's no floating panel.
-    /// Recording happens "headlessly" and transcript is auto-copied on stop.
+    /// Stops recording and copies transcript to clipboard.
     ///
     /// - Returns: The transcript if successful, nil otherwise
     func stopRecordingAndCopyToClipboard() async -> String? {
-        guard recordingState == .recording || recordingState == .paused else {
+        guard recordingState == .recording else {
             logger.debug("stopRecordingAndCopyToClipboard called but not recording")
             return nil
         }
@@ -381,46 +378,12 @@ final class RecordingManager {
         return transcript
     }
 
-    /// Pause recording (only available with live transcription).
-    ///
-    /// Note: Pause/resume only works with LiveAudioService (AVAudioEngine).
-    /// AVAudioRecorder.pause() has known bugs - see https://developer.apple.com/forums/thread/721749
-    ///
-    /// - Throws: Error if pause fails
-    func pauseRecording() throws {
-        guard isUsingLiveTranscription else {
-            throw RecordingManagerError.pauseNotAvailable
-        }
-        guard recordingState == .recording else {
-            throw RecordingManagerError.invalidState("Cannot pause: not recording")
-        }
-
-        try liveAudioService.pauseRecording()
-        liveTranscriptionService.pauseTranscribing()
-        recordingState = .paused
-        statusText = "Paused"
-        logger.info("Recording paused")
-    }
-
-    /// Resume recording (only available with live transcription)
-    /// - Throws: Error if resume fails
-    func resumeRecording() throws {
-        guard isUsingLiveTranscription else {
-            throw RecordingManagerError.resumeNotAvailable
-        }
-        guard recordingState == .paused else {
-            throw RecordingManagerError.invalidState("Cannot resume: not paused")
-        }
-
-        try liveAudioService.resumeRecording()
-        liveTranscriptionService.resumeTranscribing()
-        recordingState = .recording
-        statusText = "Recording..."
-        logger.info("Recording resumed")
-    }
-
     private func startRecording() async {
         logger.info("🔴 Starting recording...")
+
+        // Clear previous completed transcript (new recording session)
+        completedTranscript = nil
+
         recordingState = .recording
         statusText = "Recording..."
 
@@ -527,7 +490,11 @@ final class RecordingManager {
             let (destinationURL, fileName) = try saveAudioFile(from: audioURL)
             let recording = try createAndSaveRecording(fileName: fileName, duration: duration)
 
-            // Reset state
+            // Set completed transcript FIRST (authoritative, post-finalization)
+            // FloatingPanelView observes this for auto-copy — no race condition
+            completedTranscript = liveTranscriptText
+
+            // THEN reset state (UI updates, but transcript is already set)
             recordingState = .idle
             statusText = "Recording saved!"
 
@@ -894,16 +861,10 @@ final class RecordingManager {
 // MARK: - Errors
 
 enum RecordingManagerError: LocalizedError {
-    case pauseNotAvailable
-    case resumeNotAvailable
     case invalidState(String)
 
     var errorDescription: String? {
         switch self {
-        case .pauseNotAvailable:
-            return "Pause is only available with live transcription"
-        case .resumeNotAvailable:
-            return "Resume is only available with live transcription"
         case .invalidState(let message):
             return message
         }

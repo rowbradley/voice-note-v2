@@ -61,6 +61,54 @@ struct BootstrapTokenManager {
 
 **Why**: No secrets in binary, per-device tokens, revocable, simple implementation.
 
+## SwiftUI View Identity (Critical)
+
+### Reference Type Selection Views
+When passing @Model objects to detail views in master-detail interfaces:
+
+```swift
+// ✅ ALWAYS use .id() for reference types
+DetailView(item: selectedItem)
+    .id(selectedItem.id)
+
+// ❌ NEVER rely on SwiftUI detecting reference changes
+DetailView(item: selectedItem)  // Won't update on selection change!
+```
+
+**Why**: SwiftUI compares view identity, not content. Reference types (classes, @Model)
+look identical to SwiftUI even when pointing to different objects.
+
+### The .id() Pattern
+- `.id(item.id)` tells SwiftUI "this view's identity changed, recreate it"
+- This is Apple's recommended pattern, not a hack
+- Works with NavigationSplitView, List selection, any master-detail UI
+- Required for: SwiftData @Model, ObservableObject classes, any reference type
+
+### Don't Overcomplicate
+Before adding @Bindable, custom bindings, or sync functions, try:
+1. `.id(object.id)` on the child view
+2. Test if it works
+3. Only add complexity if simple solution fails AND you understand why
+
+**Red flags you're over-engineering a view identity problem:**
+- Custom Binding wrappers for displaying text
+- "sync" functions to copy model data to @State
+- Multiple lifecycle handlers (onAppear + onChange + task)
+- Removing working `.id()` calls to add "better" solutions
+
+## Debugging Checkpoint: Simplest Fix First
+
+Before proposing complex solutions, always try:
+1. The 1-line fix (`.id()`, `.animation()`, simple modifier)
+2. Verify it works or understand WHY it doesn't
+3. Only then consider architecture changes
+
+**If a simple fix "doesn't work":**
+- Verify the fix was actually applied (check the built code)
+- Add logging to confirm the code path is hit
+- Check if there's a caching/state issue elsewhere
+- Don't immediately add complexity — investigate first
+
 ## SwiftData Best Practices
 
 ### Always Specify Store URL

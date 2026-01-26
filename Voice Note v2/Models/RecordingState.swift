@@ -5,6 +5,5 @@ import Foundation
 enum RecordingState: Equatable {
     case idle
     case recording
-    case paused
     case processing
 }

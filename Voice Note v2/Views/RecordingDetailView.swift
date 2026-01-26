@@ -1,9 +1,12 @@
 import SwiftUI
 import AVFoundation
 import UniformTypeIdentifiers
-import UIKit
 import SwiftData
 import os.log
+
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct RecordingDetailView: View {
     @Bindable var recording: Recording
