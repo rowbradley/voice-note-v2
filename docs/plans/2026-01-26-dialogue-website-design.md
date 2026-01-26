@@ -22,6 +22,7 @@ No React complexity needed.
 ```
 NAV
 HERO
+WORKFLOW MANIFESTO (voice-first positioning)
 PERSONA DEMOS (animated transcription)
 FEATURES (4 sections)
 iOS WAITLIST
@@ -54,6 +55,28 @@ Simple fixed header. Logo left, CTA right.
 **Notes:**
 - "Transcriptional." banked as a fun word for use elsewhere (feature section, badge)
 - Tone: cheeky but legit
+
+---
+
+## Workflow Manifesto Section
+
+Short, punchy block that frames the voice-first workflow shift. Positioned between
+hero and demos to establish the "why" before showing the "how."
+
+**Headline:**
+> The keyboard is a bottleneck.
+
+**Copy:**
+> You speak 4x faster than you type. Your ideas shouldn't wait for your fingers
+> to catch up. Dialogue lets you capture first and organize later — voice to
+> transcript in real time, right on your Mac.
+
+**Visual treatment:**
+- Centered text, larger than body copy
+- Slight contrast from surrounding sections (subtle background shift or extra whitespace)
+- Optional: animated stat counter "150 wpm vs 40 wpm" or similar
+
+**Tone:** Confident, not preachy. States the obvious truth everyone feels.
 
 ---
 
