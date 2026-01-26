@@ -80,14 +80,10 @@ final class LiveTranscriptionService {
         await transcriptionTask?.value
         transcriptionTask = nil
 
-        // Phase 3: Handle state-mutating task (resultsTask updates finalizedText)
-        if awaitCompletion {
-            // Graceful: let it finish processing all results
-            await resultsTask?.value
-        } else {
-            // Immediate: force stop (may lose pending results)
-            resultsTask?.cancel()
-        }
+        // Phase 3: Always cancel resultsTask - the AsyncStream (transcriber.results)
+        // doesn't terminate cleanly after transcriptionTask cancellation, causing indefinite hang.
+        // Safe because transcriptionTask (awaited in Phase 2) already processed all results.
+        resultsTask?.cancel()
         resultsTask = nil
 
         // Phase 4: Cancel buffer task (safe - only does logging, no state mutations)

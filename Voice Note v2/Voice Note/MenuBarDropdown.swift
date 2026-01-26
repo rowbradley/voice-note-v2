@@ -73,7 +73,7 @@ struct MenuBarMenuContent: View {
         }
     }
 
-    /// Quick Capture mode: Start/Stop recording without opening window.
+    /// Quick Capture mode: Start/Stop recording with live preview panel.
     /// Auto-copies transcript to clipboard on stop.
     @ViewBuilder
     private var quickCaptureAction: some View {
@@ -88,7 +88,11 @@ struct MenuBarMenuContent: View {
             .keyboardShortcut("r", modifiers: .command)
         } else {
             Button {
-                Task { await recordingManager.toggleRecording() }
+                Task {
+                    await recordingManager.toggleRecording()
+                    // Open Quick Capture panel when starting recording
+                    openWindow(id: "quick-capture-panel")
+                }
             } label: {
                 Label("Start Recording", systemImage: "record.circle")
             }

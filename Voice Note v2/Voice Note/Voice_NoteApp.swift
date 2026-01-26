@@ -120,6 +120,26 @@ struct Voice_NoteApp: App {
             return WindowPlacement(CGPoint(x: x, y: y))
         }
 
+        // Quick Capture preview panel (appears during Quick Capture recording)
+        // Positioned near top-right, close to menu bar
+        Window("Quick Capture", id: "quick-capture-panel") {
+            if let modelContainer = modelContainer {
+                QuickCapturePanel()
+                    .environment(recordingManager)
+                    .environment(AppSettings.shared)
+                    .modelContainer(modelContainer)
+            }
+        }
+        .windowStyle(.plain)
+        .windowResizability(.contentSize)
+        .defaultWindowPlacement { content, context in
+            let displayBounds = context.defaultDisplay.visibleRect
+            let size = content.sizeThatFits(.unspecified)
+            let x = displayBounds.maxX - size.width - 20  // 20pt from right edge
+            let y = displayBounds.maxY - size.height - 10  // Near top (menu bar)
+            return WindowPlacement(CGPoint(x: x, y: y))
+        }
+
         // Settings window
         Settings {
             MacSettingsView()

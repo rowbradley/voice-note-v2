@@ -76,6 +76,7 @@ struct LibraryWindowView: View {
             // Main content area
             if let recording = selectedRecording {
                 RecordingDetailMacView(recording: recording)
+                    .id(recording.id)
             } else {
                 emptyDetailState
             }
@@ -90,16 +91,15 @@ struct LibraryWindowView: View {
         List(selection: $selectedRecording) {
             Section("Filter") {
                 ForEach(LibraryFilter.allCases, id: \.self) { filter in
-                    Label(filter.rawValue, systemImage: filter.icon)
-                        .tag(filter)
-                        .onTapGesture {
-                            selectedFilter = filter
-                        }
-                        .foregroundColor(selectedFilter == filter ? .accentColor : .primary)
+                    Button(action: { selectedFilter = filter }) {
+                        Label(filter.rawValue, systemImage: filter.icon)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(selectedFilter == filter ? .accentColor : .primary)
                 }
             }
 
-            Section("Recordings (\(filteredRecordings.count))") {
+            Section("Transcripts (\(filteredRecordings.count))") {
                 ForEach(filteredRecordings) { recording in
                     RecordingListRow(recording: recording)
                         .tag(recording)
@@ -192,12 +192,12 @@ struct RecordingListRow: View {
 // MARK: - Recording Detail View (Mac-specific)
 
 struct RecordingDetailMacView: View {
-    let recording: Recording
+    @Bindable var recording: Recording
 
     @Environment(\.modelContext) private var modelContext
     @State private var isEditingTitle = false
     @State private var editedTitle = ""
-    @State private var editedTranscript = ""
+    @State private var transcriptText = ""  // Local state for TextEditor
     @State private var transcriptSaveTask: Task<Void, Never>?
 
     private let logger = Logger(subsystem: "com.voicenote", category: "RecordingDetailMacView")
@@ -245,17 +245,6 @@ struct RecordingDetailMacView: View {
                 .help("Copy Transcript")
             }
         }
-        .onAppear {
-            syncStateFromRecording()
-        }
-        .onChange(of: recording.id) { _, _ in
-            // Immediately save any pending changes before switching
-            if !editedTranscript.isEmpty, editedTranscript != recording.transcript?.plainText {
-                saveTranscript(editedTranscript)
-            }
-            transcriptSaveTask?.cancel()
-            syncStateFromRecording()
-        }
     }
 
     private var headerSection: some View {
@@ -278,6 +267,9 @@ struct RecordingDetailMacView: View {
                 Button(action: {
                     if isEditingTitle {
                         saveTitle()
+                    } else {
+                        // Populate editedTitle when entering edit mode
+                        editedTitle = recording.transcript?.aiTitle ?? ""
                     }
                     isEditingTitle.toggle()
                 }) {
@@ -317,20 +309,28 @@ struct RecordingDetailMacView: View {
             }
 
             if recording.transcript != nil {
-                TextEditor(text: $editedTranscript)
+                TextEditor(text: $transcriptText)
                     .font(.body)
                     .frame(minHeight: 200)
                     .scrollContentBackground(.hidden)
                     .background(Color.secondary.opacity(0.05))
                     .cornerRadius(8)
-                    .onChange(of: editedTranscript) { _, newValue in
-                        // Debounced auto-save with 1-second delay
+                    .task(id: recording.id) {
+                        // Sync local state when recording changes
+                        transcriptText = recording.transcript?.plainText ?? ""
+                    }
+                    .onChange(of: transcriptText) { _, newValue in
+                        // Debounced auto-save when user edits
                         transcriptSaveTask?.cancel()
                         transcriptSaveTask = Task {
                             try? await Task.sleep(for: .seconds(1))
                             guard !Task.isCancelled else { return }
-                            saveTranscript(newValue)
+                            recording.transcript?.rawText = AttributedString(newValue)
+                            try? modelContext.save()
                         }
+                    }
+                    .onDisappear {
+                        transcriptSaveTask?.cancel()
                     }
             } else {
                 Text("No transcript available")
@@ -367,12 +367,6 @@ struct RecordingDetailMacView: View {
         }
     }
 
-    /// Syncs local state from the current recording (extracted to avoid duplication)
-    private func syncStateFromRecording() {
-        editedTitle = recording.transcript?.aiTitle ?? ""
-        editedTranscript = recording.transcript?.plainText ?? ""
-    }
-
     private func saveTitle() {
         recording.transcript?.aiTitle = editedTitle
         do {
@@ -381,15 +375,6 @@ struct RecordingDetailMacView: View {
             logger.error("Failed to save title: \(error.localizedDescription)")
         }
         isEditingTitle = false
-    }
-
-    private func saveTranscript(_ text: String) {
-        recording.transcript?.rawText = AttributedString(text)
-        do {
-            try modelContext.save()
-        } catch {
-            logger.error("Failed to save transcript: \(error.localizedDescription)")
-        }
     }
 
     private func unarchiveRecording() {
