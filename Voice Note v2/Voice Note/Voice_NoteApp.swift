@@ -14,7 +14,6 @@ struct Voice_NoteApp: App {
     @State private var coordinator = AppCoordinator()
     @State private var modelContainer: ModelContainer?
     @State private var recordingManager: RecordingManager
-    @State private var hasOpenedStartupPanel = false
 
     private let logger = Logger(subsystem: "com.voicenote", category: "MacApp")
     private static let appSchema = Schema([Recording.self, Transcript.self, ProcessedNote.self, Template.self, Session.self])
@@ -76,20 +75,6 @@ struct Voice_NoteApp: App {
         MenuBarExtra {
             MenuBarMenuContent(recordingManager: recordingManager)
                 .environment(AppSettings.shared)
-                .task {
-                    // Open floating panel on app startup (one-time)
-                    guard !hasOpenedStartupPanel else { return }
-                    hasOpenedStartupPanel = true
-
-                    // Brief delay for window system to be ready
-                    try? await Task.sleep(for: .milliseconds(150))
-
-                    // Find and show the floating panel
-                    if let window = NSApp.windows.first(where: { $0.title == "Voice Note" }) {
-                        window.makeKeyAndOrderFront(nil)
-                        NSApp.activate(ignoringOtherApps: false)
-                    }
-                }
         } label: {
             // Dynamic icon based on recording state
             if recordingManager.isRecording {

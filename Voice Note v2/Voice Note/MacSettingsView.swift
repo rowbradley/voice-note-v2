@@ -49,6 +49,9 @@ struct MacSettingsView: View {
                 Toggle("Launch at Login", isOn: $launchAtLogin)
                     .help("Start Voice Note when you log in")
 
+                Toggle("Show Panel on Launch", isOn: Bindable(appSettings).showPanelOnLaunch)
+                    .help("Show the floating panel when Voice Note starts")
+
                 Toggle("Show in Dock", isOn: $showInDock)
                     .help("Show Voice Note icon in the Dock (requires restart)")
             } header: {

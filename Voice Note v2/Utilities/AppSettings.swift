@@ -167,6 +167,14 @@ final class AppSettings {
         }
     }
 
+    /// Whether to show floating panel when app launches.
+    /// Stored locally - per-device preference.
+    var showPanelOnLaunch: Bool {
+        didSet {
+            localStore.set(showPanelOnLaunch, forKey: Keys.showPanelOnLaunch)
+        }
+    }
+
 
     // MARK: - Initialization
 
@@ -204,6 +212,7 @@ final class AppSettings {
         // Load macOS floating panel settings
         self.floatingPanelStayOnTop = local.object(forKey: Keys.floatingPanelStayOnTop) as? Bool ?? true
         self.showRecordingBorder = local.object(forKey: Keys.showRecordingBorder) as? Bool ?? true
+        self.showPanelOnLaunch = local.object(forKey: Keys.showPanelOnLaunch) as? Bool ?? true
 
         // Listen for external iCloud changes (from other devices)
         setupExternalChangeObserver()
@@ -364,6 +373,7 @@ private enum Keys {
     // macOS floating panel settings
     static let floatingPanelStayOnTop = "floatingPanelStayOnTop"
     static let showRecordingBorder = "showRecordingBorder"
+    static let showPanelOnLaunch = "showPanelOnLaunch"
 }
 
 // MARK: - Audio Sync Policy

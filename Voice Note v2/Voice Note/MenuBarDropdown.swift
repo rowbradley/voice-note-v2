@@ -16,7 +16,10 @@ struct MenuBarMenuContent: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(AppSettings.self) private var appSettings
 
+    @State private var hasHandledStartup = false
+
     var body: some View {
+        Group {
         // Start Recording / Stop Recording
         if recordingManager.isRecording {
             Button("Stop Recording") {
@@ -65,6 +68,18 @@ struct MenuBarMenuContent: View {
 
         Button("Quit Voice Note") {
             NSApplication.shared.terminate(nil)
+        }
+        }
+        .onAppear {
+            guard !hasHandledStartup else { return }
+            hasHandledStartup = true
+
+            guard appSettings.showPanelOnLaunch else { return }
+
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(200))
+                openWindow(id: WindowManager.ID.floatingPanel)
+            }
         }
     }
 }
