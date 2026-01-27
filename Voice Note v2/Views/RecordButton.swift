@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct RecordButton: View {
     // RecordingState is now defined in Models/RecordingState.swift for cross-platform use
@@ -9,16 +8,10 @@ struct RecordButton: View {
     
     @State private var isPressed = false
     @State private var pulseAnimation = false
-    @State private var previousState: RecordingState?
     
     var body: some View {
         Button(action: {
-            // Trigger haptic on button press
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-            impactFeedback.prepare()
-            impactFeedback.impactOccurred()
-            
-            // Then perform the action
+            // Haptic feedback handled by onChange when state transitions
             action()
         }) {
             Circle()
@@ -46,15 +39,7 @@ struct RecordButton: View {
         }
         .onChange(of: state) { oldState, newState in
             pulseAnimation = newState == .recording
-            
-            // Trigger haptic feedback on state changes
-            if let previous = previousState, previous != newState {
-                triggerHapticFeedback(for: newState, from: previous)
-            }
-            previousState = newState
-        }
-        .onAppear {
-            previousState = state
+            triggerHapticFeedback(for: newState, from: oldState)
         }
     }
     
@@ -69,7 +54,7 @@ struct RecordButton: View {
                 colors: [.red.opacity(0.9), .red.opacity(0.85)],
                 startPoint: .top, endPoint: .bottom
             )
-        case .recording, .paused:
+        case .recording:
             return LinearGradient(
                 colors: [.red, .red.opacity(0.95)],
                 startPoint: .top, endPoint: .bottom
@@ -85,7 +70,7 @@ struct RecordButton: View {
     private var shadowColor: Color {
         switch state {
         case .idle: return .red.opacity(0.3)
-        case .recording, .paused: return .red.opacity(0.4)
+        case .recording: return .red.opacity(0.4)
         case .processing: return .gray.opacity(0.2)
         }
     }
@@ -101,7 +86,7 @@ struct RecordButton: View {
     private var strokeColor: Color {
         switch state {
         case .idle: return .red.opacity(0.3)
-        case .recording, .paused: return .red.opacity(0.5)
+        case .recording: return .red.opacity(0.5)
         case .processing: return .gray.opacity(0.3)
         }
     }
@@ -119,7 +104,7 @@ struct RecordButton: View {
         switch state {
         case .idle:
             Image(systemName: "mic.fill")  // Always show mic icon in idle
-        case .recording, .paused:
+        case .recording:
             Image(systemName: "stop.fill")
         case .processing:
             ProgressView()
@@ -132,24 +117,17 @@ struct RecordButton: View {
         switch (previousState, newState) {
         case (.idle, .recording):
             // Starting recording - medium impact
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-            impactFeedback.prepare()
-            impactFeedback.impactOccurred()
-            
+            PlatformFeedback.shared.mediumTap()
+
         case (.recording, .processing), (.recording, .idle):
             // Stopping recording - light impact
-            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-            impactFeedback.prepare()
-            impactFeedback.impactOccurred()
-            
+            PlatformFeedback.shared.lightTap()
+
         case (.processing, .idle):
             // Processing complete - soft notification
-            let notificationFeedback = UINotificationFeedbackGenerator()
-            notificationFeedback.prepare()
-            notificationFeedback.notificationOccurred(.success)
-            
+            PlatformFeedback.shared.success()
+
         default:
-            // No haptic for other transitions
             break
         }
     }

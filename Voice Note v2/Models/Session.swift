@@ -38,10 +38,44 @@ final class Session {
         recordings.reduce(0) { $0 + $1.duration }
     }
 
+    /// Formatted date for display.
+    /// Auto-created sessions (midnight): "January 26, 2026"
+    /// Manually created sessions: "January 26, 2026 at 2:30 PM"
+    var displayDate: String {
+        let calendar = Calendar.current
+        let isStartOfDay = calendar.startOfDay(for: startedAt) == startedAt
+
+        if isStartOfDay {
+            return startedAt.formatted(date: .long, time: .omitted)
+        } else {
+            return startedAt.formatted(date: .long, time: .shortened)
+        }
+    }
+
+    /// Combined transcript from all recordings, chronologically ordered.
+    /// Empty recordings/transcripts are filtered out.
+    var combinedTranscript: String {
+        recordings
+            .sorted { $0.createdAt < $1.createdAt }
+            .compactMap { $0.transcript?.plainText }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n---\n\n")
+    }
+
+    /// Formatted total duration for display (e.g., "23:45")
+    var formattedDuration: String {
+        let minutes = Int(totalDuration) / 60
+        let seconds = Int(totalDuration) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
     // MARK: - Initialization
 
-    /// Creates a new session for the given date (uses midnight of that day)
-    init(date: Date = Date()) {
-        self.startedAt = Calendar.current.startOfDay(for: date)
+    /// Creates a new session for the given date.
+    /// - Parameters:
+    ///   - date: The date for this session
+    ///   - useExactTime: If true, uses exact timestamp. If false (default), uses midnight.
+    init(date: Date = Date(), useExactTime: Bool = false) {
+        self.startedAt = useExactTime ? date : Calendar.current.startOfDay(for: date)
     }
 }

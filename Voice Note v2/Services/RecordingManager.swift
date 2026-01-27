@@ -243,6 +243,41 @@ final class RecordingManager {
         }
     }
 
+    /// Creates a new session manually, closing the current one.
+    /// Use when user wants to organize recordings within the same day.
+    func startNewSession() {
+        guard let modelContext = modelContext else {
+            logger.warning("Cannot start new session: ModelContext not available")
+            return
+        }
+
+        let now = Date()
+
+        // Close all open sessions
+        let descriptor = FetchDescriptor<Session>(
+            predicate: #Predicate<Session> { session in
+                session.endedAt == nil
+            }
+        )
+
+        do {
+            let openSessions = try modelContext.fetch(descriptor)
+            for session in openSessions {
+                session.endedAt = now
+                logger.debug("Closed session from \(session.startedAt)")
+            }
+
+            // Create new session with exact timestamp (not midnight)
+            let newSession = Session(date: now, useExactTime: true)
+            modelContext.insert(newSession)
+
+            try modelContext.save()
+            logger.info("Started new session at \(now.formatted(date: .abbreviated, time: .shortened))")
+        } catch {
+            logger.error("Failed to start new session: \(error)")
+        }
+    }
+
     /// Clears the status text after a delay using structured concurrency
     private func clearStatusAfterDelay(_ delay: TimeInterval = 2.0) {
         Task { @MainActor in

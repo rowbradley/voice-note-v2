@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MacSettingsView: View {
     @Environment(AppCoordinator.self) private var coordinator
+    @Environment(AppSettings.self) private var appSettings
 
     @AppStorage("launchAtLogin") private var launchAtLogin = false
     @AppStorage("showInDock") private var showInDock = false
@@ -27,12 +28,17 @@ struct MacSettingsView: View {
                     Label("Recording", systemImage: "waveform")
                 }
 
+            storageTab
+                .tabItem {
+                    Label("Storage", systemImage: "internaldrive")
+                }
+
             privacyTab
                 .tabItem {
                     Label("Privacy", systemImage: "hand.raised")
                 }
         }
-        .frame(width: 450, height: 300)
+        .frame(width: 450, height: 350)
     }
 
     // MARK: - General Tab
@@ -81,6 +87,45 @@ struct MacSettingsView: View {
                 .help("Automatically process recordings with this template")
             } header: {
                 Text("Processing")
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+    }
+
+    // MARK: - Storage Tab
+
+    private var storageTab: some View {
+        @Bindable var settings = appSettings
+
+        return Form {
+            Section {
+                Picker("Keep recordings for", selection: $settings.retentionPolicy) {
+                    ForEach(RetentionPolicy.pickerOptions, id: \.self) { policy in
+                        Text(policy.displayName).tag(policy)
+                    }
+                }
+                .help("Recordings older than this will be automatically deleted")
+
+                Text("Pinned recordings are never deleted, regardless of retention policy.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("Data Retention")
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Retention enforcement coming soon")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text("Your retention preference is saved and will be applied when automatic cleanup is implemented in a future update.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } header: {
+                Text("Note")
             }
         }
         .formStyle(.grouped)

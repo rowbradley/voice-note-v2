@@ -14,11 +14,15 @@ struct Voice_NoteApp: App {
     @State private var coordinator = AppCoordinator()
     @State private var modelContainer: ModelContainer?
     @State private var recordingManager: RecordingManager
+    @State private var hasOpenedStartupPanel = false
 
     private let logger = Logger(subsystem: "com.voicenote", category: "MacApp")
     private static let appSchema = Schema([Recording.self, Transcript.self, ProcessedNote.self, Template.self, Session.self])
 
     init() {
+        // Disable window state restoration (prevents library window from auto-opening on launch)
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+
         // Initialize RecordingManager first (required before calling instance methods)
         let manager = RecordingManager()
         _recordingManager = State(initialValue: manager)
@@ -37,8 +41,6 @@ struct Voice_NoteApp: App {
         } catch {
             logger.error("Failed to create ModelContainer: \(error)")
 
-            // RecordingManager remains unconfigured (in-memory only)
-
             // Create in-memory container as fallback
             do {
                 let config = ModelConfiguration(
@@ -50,6 +52,10 @@ struct Voice_NoteApp: App {
                     configurations: config
                 )
                 _modelContainer = State(initialValue: fallbackContainer)
+
+                // Configure RecordingManager with fallback container
+                manager.configure(with: fallbackContainer.mainContext)
+
                 logger.warning("Using in-memory database as fallback")
             } catch {
                 logger.critical("Cannot create even in-memory database: \(error)")
@@ -70,6 +76,20 @@ struct Voice_NoteApp: App {
         MenuBarExtra {
             MenuBarMenuContent(recordingManager: recordingManager)
                 .environment(AppSettings.shared)
+                .task {
+                    // Open floating panel on app startup (one-time)
+                    guard !hasOpenedStartupPanel else { return }
+                    hasOpenedStartupPanel = true
+
+                    // Brief delay for window system to be ready
+                    try? await Task.sleep(for: .milliseconds(150))
+
+                    // Find and show the floating panel
+                    if let window = NSApp.windows.first(where: { $0.title == "Voice Note" }) {
+                        window.makeKeyAndOrderFront(nil)
+                        NSApp.activate(ignoringOtherApps: false)
+                    }
+                }
         } label: {
             // Dynamic icon based on recording state
             if recordingManager.isRecording {

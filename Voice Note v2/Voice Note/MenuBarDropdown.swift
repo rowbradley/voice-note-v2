@@ -19,24 +19,18 @@ struct MenuBarMenuContent: View {
     var body: some View {
         // Start Recording / Stop Recording
         if recordingManager.isRecording {
-            Button {
+            Button("Stop Recording") {
                 Task {
                     await recordingManager.toggleRecording()
                 }
-            } label: {
-                Label("Stop Recording", systemImage: "stop.circle.fill")
             }
-            .keyboardShortcut("r", modifiers: .command)
         } else {
-            Button {
+            Button("Start Recording") {
                 Task {
                     await recordingManager.toggleRecording()
                     openWindow(id: WindowManager.ID.floatingPanel)
                 }
-            } label: {
-                Label("Start Recording", systemImage: "record.circle")
             }
-            .keyboardShortcut("r", modifiers: .command)
         }
 
         // Show Panel (when not recording)
@@ -51,7 +45,11 @@ struct MenuBarMenuContent: View {
         Button("Open Library...") {
             WindowManager.openOrSurface(id: WindowManager.ID.library, using: openWindow)
         }
-        .keyboardShortcut("l", modifiers: .command)
+
+        Button("New Session") {
+            recordingManager.startNewSession()
+        }
+        .disabled(recordingManager.isRecording)
 
         Divider()
 
@@ -62,13 +60,11 @@ struct MenuBarMenuContent: View {
         SettingsLink {
             Text("Settings...")
         }
-        .keyboardShortcut(",", modifiers: .command)
 
         Divider()
 
         Button("Quit Voice Note") {
             NSApplication.shared.terminate(nil)
         }
-        .keyboardShortcut("q", modifiers: .command)
     }
 }

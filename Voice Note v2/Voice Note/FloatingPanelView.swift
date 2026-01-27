@@ -300,9 +300,9 @@ struct FloatingPanelView: View {
             .buttonStyle(.borderedProminent)
             .tint(.red)
         case .recording:
-            // Done button (stops recording)
+            // Stop button (ends recording)
             Button(action: toggleRecording) {
-                Label("Done", systemImage: "checkmark.circle.fill")
+                Label("Stop", systemImage: "stop.fill")
             }
             .buttonStyle(.borderedProminent)
             .tint(.green)

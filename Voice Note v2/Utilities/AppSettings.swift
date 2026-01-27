@@ -167,22 +167,6 @@ final class AppSettings {
         }
     }
 
-    /// Whether to auto-archive quick captures after copying.
-    /// Synced via iCloud - user workflow preference.
-    var autoArchiveQuickCaptures: Bool {
-        didSet {
-            syncedStore.set(autoArchiveQuickCaptures, forKey: Keys.autoArchiveQuickCaptures)
-            syncedStore.synchronize()
-        }
-    }
-
-    /// Menu bar interaction mode: quick capture vs floating window.
-    /// Stored locally - workflow preference may vary by device.
-    var interactionMode: MenuBarInteractionMode {
-        didSet {
-            localStore.set(interactionMode.rawValue, forKey: Keys.interactionMode)
-        }
-    }
 
     // MARK: - Initialization
 
@@ -220,12 +204,6 @@ final class AppSettings {
         // Load macOS floating panel settings
         self.floatingPanelStayOnTop = local.object(forKey: Keys.floatingPanelStayOnTop) as? Bool ?? true
         self.showRecordingBorder = local.object(forKey: Keys.showRecordingBorder) as? Bool ?? true
-        self.autoArchiveQuickCaptures = iCloud.object(forKey: Keys.autoArchiveQuickCaptures) as? Bool ?? true
-
-        // Load menu bar interaction mode
-        self.interactionMode = MenuBarInteractionMode(
-            rawValue: local.string(forKey: Keys.interactionMode) ?? ""
-        ) ?? .floatingWindow
 
         // Listen for external iCloud changes (from other devices)
         setupExternalChangeObserver()
@@ -303,8 +281,6 @@ final class AppSettings {
             if value > 0 {
                 recentClipsCount = Int(value)
             }
-        case Keys.autoArchiveQuickCaptures:
-            autoArchiveQuickCaptures = syncedStore.object(forKey: key) as? Bool ?? true
         default:
             break
         }
@@ -323,7 +299,6 @@ final class AppSettings {
         autoCopyOnComplete = syncedStore.bool(forKey: Keys.autoCopyOnComplete)
         let count = syncedStore.longLong(forKey: Keys.recentClipsCount)
         recentClipsCount = count > 0 ? Int(count) : 10
-        autoArchiveQuickCaptures = syncedStore.object(forKey: Keys.autoArchiveQuickCaptures) as? Bool ?? true
     }
 
     // MARK: - Migration
@@ -389,8 +364,6 @@ private enum Keys {
     // macOS floating panel settings
     static let floatingPanelStayOnTop = "floatingPanelStayOnTop"
     static let showRecordingBorder = "showRecordingBorder"
-    static let autoArchiveQuickCaptures = "autoArchiveQuickCaptures"
-    static let interactionMode = "menuBarInteractionMode"
 }
 
 // MARK: - Audio Sync Policy
@@ -420,33 +393,6 @@ enum AudioSyncPolicy: String, CaseIterable, Codable {
     }
 }
 
-// MARK: - Menu Bar Interaction Mode
-
-/// Controls how clicking the menu bar icon behaves.
-/// Device-local setting since workflow preference may vary by device.
-enum MenuBarInteractionMode: String, CaseIterable, Codable {
-    /// Click menu bar → start/stop recording immediately (no window).
-    /// Auto-copies transcript to clipboard on stop.
-    case quickCapture = "quickCapture"
-
-    /// Click menu bar → open floating panel for recording control.
-    case floatingWindow = "floatingWindow"
-
-    var displayName: String {
-        switch self {
-        case .quickCapture: return "Quick Capture"
-        case .floatingWindow: return "Floating Window"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .quickCapture: return "bolt.circle"
-        case .floatingWindow: return "rectangle.on.rectangle"
-        }
-    }
-}
-
 // MARK: - Retention Policy
 
 /// Controls automatic deletion of old recordings.
@@ -454,22 +400,31 @@ enum RetentionPolicy: String, CaseIterable, Codable {
     /// Keep recordings forever
     case forever = "forever"
 
+    /// Delete recordings older than 7 days
+    case days7 = "7days"
+
     /// Delete recordings older than 30 days
     case days30 = "30days"
 
     /// Delete recordings older than 90 days
     case days90 = "90days"
 
-    /// Delete recordings older than 1 year
+    /// Delete recordings older than 1 year (kept for backwards compatibility)
     case year1 = "1year"
 
     var displayName: String {
         switch self {
         case .forever: return "Forever"
+        case .days7: return "7 Days"
         case .days30: return "30 Days"
         case .days90: return "90 Days"
         case .year1: return "1 Year"
         }
+    }
+
+    /// Retention options shown in settings picker (excludes year1 for cleaner UI)
+    static var pickerOptions: [RetentionPolicy] {
+        [.forever, .days7, .days30, .days90]
     }
 }
 
